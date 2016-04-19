@@ -13,23 +13,13 @@ import SwiftKeychainWrapper
 }
 
 /// Presented to the to user when asking for their passcode to validate entry into a part of the app.
-class PasscodeEntryViewController: UIViewController {
+class PasscodeEntryViewController: BasePasscodeViewController {
     weak var delegate: PasscodeEntryDelegate?
-    private let passcodePane = PasscodePane(title: AuthenticationStrings.enterPasscode)
-
-    init() {
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder aDecoder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    private let passcodePane = PasscodePane()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIConstants.TableViewHeaderBackgroundColor
-        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .Cancel, target: self, action: Selector("dismiss"))
-        automaticallyAdjustsScrollViewInsets = false
+        title = AuthenticationStrings.enterPasscodeTitle
         view.addSubview(passcodePane)
         passcodePane.snp_makeConstraints { make in
             make.bottom.left.right.equalTo(self.view)
@@ -40,7 +30,14 @@ class PasscodeEntryViewController: UIViewController {
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
         passcodePane.codeInputView.delegate = self
-        passcodePane.codeInputView.becomeFirstResponder()
+
+        // Don't show the keyboard or allow typing if we're locked out. Also display the error.
+        if authenticationInfo?.isLocked() ?? false {
+            displayLockoutError()
+            passcodePane.codeInputView.userInteractionEnabled = false
+        } else {
+            passcodePane.codeInputView.becomeFirstResponder()
+        }
     }
 
     override func viewWillDisappear(animated: Bool) {
@@ -49,18 +46,19 @@ class PasscodeEntryViewController: UIViewController {
     }
 }
 
-extension PasscodeEntryViewController {
-    @objc private func dismiss() {
-        self.dismissViewControllerAnimated(true, completion: nil)
-    }
-}
-
 extension PasscodeEntryViewController: PasscodeInputViewDelegate {
     func passcodeInputView(inputView: PasscodeInputView, didFinishEnteringCode code: String) {
-        if let passcode = KeychainWrapper.stringForKey(KeychainKeyPasscode) where passcode == code {
+        if let passcode = authenticationInfo?.passcode where passcode == code {
+            authenticationInfo?.recordValidation()
+            KeychainWrapper.setAuthenticationInfo(authenticationInfo)
             delegate?.passcodeValidationDidSucceed()
         } else {
-            // TODO: Show error for incorrect passcode
+            passcodePane.shakePasscode()
+            failIncorrectPasscode(inputView: inputView)
+            passcodePane.codeInputView.resetCode()
+
+            // Store mutations on authentication info object
+            KeychainWrapper.setAuthenticationInfo(authenticationInfo)
         }
     }
 }

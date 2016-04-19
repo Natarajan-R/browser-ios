@@ -112,13 +112,15 @@ class Browser: NSObject, BrowserWebViewDelegate {
                 lastUsed: NSDate.now(),
                 icon: nil)
         } else if let sessionData = browser.sessionData where !sessionData.urls.isEmpty {
-            let history = Array(sessionData.urls.reverse())
-            return RemoteTab(clientGUID: nil,
-                URL: history[0],
-                title: browser.displayTitle,
-                history: history,
-                lastUsed: sessionData.lastUsedTime,
-                icon: nil)
+            let history = Array(sessionData.urls.filter(RemoteTab.shouldIncludeURL).reverse())
+            if let displayURL = history.first {
+                return RemoteTab(clientGUID: nil,
+                    URL: displayURL,
+                    title: browser.displayTitle,
+                    history: history,
+                    lastUsed: sessionData.lastUsedTime,
+                    icon: nil)
+            }
         }
 
         return nil
@@ -264,11 +266,11 @@ class Browser: NSObject, BrowserWebViewDelegate {
             return title
         }
 
-        if let lastTitle = lastTitle where !lastTitle.isEmpty {
-            return lastTitle
+        guard let lastTitle = lastTitle where !lastTitle.isEmpty else {
+            return displayURL?.absoluteString ??  ""
         }
 
-        return displayURL?.absoluteString ?? ""
+        return lastTitle
     }
 
     var currentInitialURL: NSURL? {
@@ -305,7 +307,7 @@ class Browser: NSObject, BrowserWebViewDelegate {
             }
 
             if ErrorPageHelper.isErrorPageURL(url) {
-                let decodedURL = ErrorPageHelper.decodeURL(url)
+                let decodedURL = ErrorPageHelper.originalURLFromQuery(url)
                 if !AboutUtils.isAboutURL(decodedURL) {
                     return decodedURL
                 } else {
@@ -435,7 +437,7 @@ class Browser: NSObject, BrowserWebViewDelegate {
 
     func removeAllSnackbars() {
         // Enumerate backwards here because we'll remove items from the list as we go.
-        for var i = bars.count-1; i >= 0; i-- {
+        for i in (0..<bars.count).reverse() {
             let bar = bars[i]
             removeSnackbar(bar)
         }
@@ -443,7 +445,7 @@ class Browser: NSObject, BrowserWebViewDelegate {
 
     func expireSnackbars() {
         // Enumerate backwards here because we may remove items from the list as we go.
-        for var i = bars.count-1; i >= 0; i-- {
+        for i in (0..<bars.count).reverse() {
             let bar = bars[i]
             if !bar.shouldPersist(self) {
                 removeSnackbar(bar)

@@ -1,7 +1,0 @@
-duckduckgo
-11870
-bing
-google
-twitter
-wikipedia-es
-yahoo-es

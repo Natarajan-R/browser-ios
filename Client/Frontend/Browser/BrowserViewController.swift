@@ -42,7 +42,6 @@ class BrowserViewController: UIViewController {
     var statusBarOverlay: UIView!
     private(set) var toolbar: BraveBrowserBottomToolbar?
     private var searchController: SearchViewController?
-    let uriFixup = URIFixup()
     private var screenshotHelper: ScreenshotHelper!
     var homePanelIsInline = true
     private var searchLoader: SearchLoader!
@@ -121,11 +120,11 @@ class BrowserViewController: UIViewController {
     override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransitionToSize(size, withTransitionCoordinator: coordinator)
 
-        guard let displayedPopoverController = self.displayedPopoverController where displayedPopoverController.isBeingPresented() else {
+        displayedPopoverController?.dismissViewControllerAnimated(true, completion: nil)
+
+        guard let displayedPopoverController = self.displayedPopoverController else {
             return
         }
-
-        displayedPopoverController.dismissViewControllerAnimated(true, completion: nil)
 
         coordinator.animateAlongsideTransition(nil) { context in
             self.updateDisplayedPopoverProperties?()
@@ -272,10 +271,10 @@ class BrowserViewController: UIViewController {
         log.debug("BVC viewDidLoad…")
         super.viewDidLoad()
         log.debug("BVC super viewDidLoad called.")
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "SELBookmarkStatusDidChange:", name: BookmarkStatusChangedNotification, object: nil)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "SELappWillResignActiveNotification", name: UIApplicationWillResignActiveNotification, object: nil)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "SELappDidBecomeActiveNotification", name: UIApplicationDidBecomeActiveNotification, object: nil)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "SELappDidEnterBackgroundNotification", name: UIApplicationDidEnterBackgroundNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(BrowserViewController.SELBookmarkStatusDidChange(_:)), name: BookmarkStatusChangedNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(BrowserViewController.SELappWillResignActiveNotification), name: UIApplicationWillResignActiveNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(BrowserViewController.SELappDidBecomeActiveNotification), name: UIApplicationDidBecomeActiveNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(BrowserViewController.SELappDidEnterBackgroundNotification), name: UIApplicationDidEnterBackgroundNotification, object: nil)
         KeyboardHelper.defaultHelper.addDelegate(self)
 
         log.debug("BVC adding footer and header…")
@@ -305,7 +304,7 @@ class BrowserViewController: UIViewController {
         log.debug("BVC setting up top touch area…")
         topTouchArea = UIButton()
         topTouchArea.isAccessibilityElement = false
-        topTouchArea.addTarget(self, action: "SELtappedTopArea", forControlEvents: UIControlEvents.TouchUpInside)
+        topTouchArea.addTarget(self, action: #selector(BrowserViewController.SELtappedTopArea), forControlEvents: UIControlEvents.TouchUpInside)
         view.addSubview(topTouchArea)
 
         // Setup the URL bar, wrapped in a view to get transparency effect
@@ -429,17 +428,6 @@ class BrowserViewController: UIViewController {
             if !urls.isEmpty {
                 dispatch_async(dispatch_get_main_queue()) {
                     self.tabManager.addTabsForURLs(urls, zombie: false)
-                    if #available(iOS 9, *) {
-                        if let lastTab = cursor.asArray().last {
-                            var userData = [QuickActions.TabURLKey: lastTab.url]
-                            if let title = lastTab.title where title.characters.count > 0 {
-                                userData[QuickActions.TabTitleKey] = title
-                            } else {
-                                userData[QuickActions.TabTitleKey] = lastTab.url
-                            }
-                            QuickActions.sharedInstance.addDynamicApplicationShortcutItemOfType(.OpenLastTab, withUserData: userData, toApplication: UIApplication.sharedApplication())
-                        }
-                    }
                 }
             }
 
@@ -549,7 +537,7 @@ class BrowserViewController: UIViewController {
         super.viewDidAppear(animated)
         log.debug("BVC done.")
 
-        if profile.prefs.stringForKey(LatestAppVersionProfileKey) != AppInfo.appVersion && DeviceInfo.hasConnectivity() {
+        if shouldShowWhatsNewTab() {
             if let whatsNewURL = SupportUtils.URLForTopic("new-ios") {
                 self.openURLInNewTab(whatsNewURL)
                 profile.prefs.setString(AppInfo.appVersion, forKey: LatestAppVersionProfileKey)
@@ -557,6 +545,14 @@ class BrowserViewController: UIViewController {
         }
 
         showQueuedAlertIfAvailable()
+    }
+
+    private func shouldShowWhatsNewTab() -> Bool {
+        guard let latestMajorAppVersion = profile.prefs.stringForKey(LatestAppVersionProfileKey)?.componentsSeparatedByString(".").first else {
+            return DeviceInfo.hasConnectivity()
+        }
+
+        return latestMajorAppVersion != AppInfo.majorAppVersion && DeviceInfo.hasConnectivity()
     }
 
     private func showQueuedAlertIfAvailable() {
@@ -851,11 +847,13 @@ class BrowserViewController: UIViewController {
         })
     }
 
-    func removeBookmark(url: String) {
-        profile.bookmarks.removeByURL(url).uponQueue(dispatch_get_main_queue()) { res in
-            if res.isSuccess {
-                self.toolbar?.updateBookmarkStatus(false)
-                self.urlBar.updateBookmarkStatus(false)
+    private func removeBookmark(url: String) {
+        profile.bookmarks.modelFactory >>== {
+            $0.removeByURL(url).uponQueue(dispatch_get_main_queue()) { res in
+                if res.isSuccess {
+                    self.toolbar?.updateBookmarkStatus(false)
+                    self.urlBar.updateBookmarkStatus(false)
+                }
             }
         }
     }
@@ -898,6 +896,9 @@ class BrowserViewController: UIViewController {
             guard let loading = change?[NSKeyValueChangeNewKey] as? Bool else { break }
             toolbar?.updateReloadStatus(loading)
             urlBar.updateReloadStatus(loading)
+            if (!loading) {
+                runScriptsOnWebView(webView)
+            }
         case KVOURL:
             if let tab = tabManager.selectedTab where tab.webView?.URL == nil {
                 log.debug("URL is nil!")
@@ -917,6 +918,10 @@ class BrowserViewController: UIViewController {
         }
     }
 
+    private func runScriptsOnWebView(webView: WKWebView) {
+        webView.evaluateJavaScript("__firefox__.favicons.getFavicons()", completionHandler:nil)
+    }
+    
     private func updateUIForReaderHomeStateForTab(tab: Browser) {
 #if BRAVE
         updateURLBarDisplayURL(tab)
@@ -927,7 +932,7 @@ class BrowserViewController: UIViewController {
         if let url = tab.url {
             if ReaderModeUtils.isReaderModeURL(url) {
                 showReaderModeBar(animated: false)
-                NSNotificationCenter.defaultCenter().addObserver(self, selector: "SELDynamicFontChanged:", name: NotificationDynamicFontChanged, object: nil)
+                NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(BrowserViewController.SELDynamicFontChanged(_:)), name: NotificationDynamicFontChanged, object: nil)
             } else {
                 hideReaderModeBar(animated: false)
                 NSNotificationCenter.defaultCenter().removeObserver(self, name: NotificationDynamicFontChanged, object: nil)
@@ -951,20 +956,22 @@ class BrowserViewController: UIViewController {
     private func updateURLBarDisplayURL(tab: Browser) {
         urlBar.currentURL = tab.displayURL
 
-        let isPage = (tab.displayURL != nil) ? isWebPage(tab.displayURL!) : false
+        let isPage = tab.displayURL?.isWebPage() ?? false
         navigationToolbar.updatePageStatus(isWebPage: isPage)
 
         guard let url = tab.displayURL?.absoluteString else {
             return
         }
 
-        profile.bookmarks.isBookmarked(url).uponQueue(dispatch_get_main_queue()) { result in
-            guard let bookmarked = result.successValue else {
-                log.error("Error getting bookmark status: \(result.failureValue).")
-                return
-            }
+        profile.bookmarks.modelFactory >>== {
+            $0.isBookmarked(url).uponQueue(dispatch_get_main_queue()) { result in
+                guard let bookmarked = result.successValue else {
+                    log.error("Error getting bookmark status: \(result.failureValue).")
+                    return
+                }
 
-            self.navigationToolbar.updateBookmarkStatus(bookmarked)
+                self.navigationToolbar.updateBookmarkStatus(bookmarked)
+            }
         }
     }
     // Mark: Opening New Tabs
@@ -980,37 +987,31 @@ class BrowserViewController: UIViewController {
         self.tabTrayController = tabTrayController
     }
 
-    func switchToTabForURLOrOpen(url: NSURL) {
+    func switchToTabForURLOrOpen(url: NSURL, isPrivate: Bool = false) {
         let tab = tabManager.getTabForURL(url)
         popToBrowser(tab)
         if let tab = tab {
             tabManager.selectTab(tab)
         } else {
-            openURLInNewTab(url)
+            openURLInNewTab(url, isPrivate: isPrivate)
         }
     }
 
-    func openURLInNewTab(url: NSURL) {
-        if #available(iOS 9, *) {
-            openURLInNewTab(url, isPrivate: tabTrayController?.privateMode ?? false)
-        } else {
-            tabManager.addTabAndSelect(NSURLRequest(URL: url))
-        }
-    }
-
-    @available(iOS 9, *)
-    func openURLInNewTab(url: NSURL?, isPrivate: Bool) {
+    func openURLInNewTab(url: NSURL?, isPrivate: Bool = false) {
         let request: NSURLRequest?
         if let url = url {
             request = NSURLRequest(URL: url)
         } else {
             request = nil
         }
-        switchToPrivacyMode(isPrivate: isPrivate)
-        tabManager.addTabAndSelect(request, isPrivate: isPrivate)
+        if #available(iOS 9, *) {
+            switchToPrivacyMode(isPrivate: isPrivate)
+            tabManager.addTabAndSelect(request, isPrivate: isPrivate)
+        } else {
+            tabManager.addTabAndSelect(request)
+        }
     }
 
-    @available(iOS 9, *)
     func openBlankNewTabAndFocus(isPrivate isPrivate: Bool = false) {
         popToBrowser()
         openURLInNewTab(nil, isPrivate: isPrivate)
@@ -1279,11 +1280,22 @@ extension BrowserViewController: URLBarDelegate {
         })
         longPressAlertController.addAction(cancelAction)
 
-        if let popoverPresentationController = longPressAlertController.popoverPresentationController {
-            popoverPresentationController.sourceView = urlBar
-            popoverPresentationController.sourceRect = urlBar.frame
-            popoverPresentationController.permittedArrowDirections = .Any
+        let setupPopover = { [unowned self] in
+            if let popoverPresentationController = longPressAlertController.popoverPresentationController {
+                popoverPresentationController.sourceView = urlBar
+                popoverPresentationController.sourceRect = urlBar.frame
+                popoverPresentationController.permittedArrowDirections = .Any
+                popoverPresentationController.delegate = self
+            }
         }
+
+        setupPopover()
+
+        if longPressAlertController.popoverPresentationController != nil {
+            displayedPopoverController = longPressAlertController
+            updateDisplayedPopoverProperties = setupPopover
+        }
+
         self.presentViewController(longPressAlertController, animated: true, completion: nil)
     }
 
@@ -1312,20 +1324,15 @@ extension BrowserViewController: URLBarDelegate {
     }
 
     func urlBar(urlBar: URLBarView, didSubmitText text: String) {
-        var url = uriFixup.getURL(text)
-
         // If we can't make a valid URL, do a search query.
-        if url == nil {
-            url = profile.searchEngines.defaultEngine.searchURLForQuery(text)
-        }
-
         // If we still don't have a valid URL, something is broken. Give up.
-        if url == nil {
+        guard let url = URIFixup.getURL(text) ??
+                        profile.searchEngines.defaultEngine.searchURLForQuery(text) else {
             log.error("Error handling URL entry: \"\(text)\".")
             return
         }
 
-        finishEditingAndSubmit(url!, visitType: VisitType.Typed)
+        finishEditingAndSubmit(url, visitType: VisitType.Typed)
     }
 
     func urlBarDidEnterOverlayMode(urlBar: URLBarView) {
@@ -1401,15 +1408,14 @@ extension BrowserViewController: BrowserToolbarDelegate {
                 log.error("Bookmark error: No tab is selected, or no URL in tab.")
                 return
         }
-        profile.bookmarks.isBookmarked(url).uponQueue(dispatch_get_main_queue()) {
-            guard let isBookmarked = $0.successValue else {
-                log.error("Bookmark error: \($0.failureValue).")
-                return
-            }
-            if isBookmarked {
-                self.removeBookmark(url)
-            } else {
-                self.addBookmark(url, title: tab.title)
+
+        profile.bookmarks.modelFactory >>== {
+            $0.isBookmarked(url) >>== { isBookmarked in
+                if isBookmarked {
+                    self.removeBookmark(url)
+                } else {
+                    self.addBookmark(url, title: tab.title)
+                }
             }
         }
     }
@@ -1483,6 +1489,9 @@ extension BrowserViewController: BrowserDelegate {
         let findInPageHelper = FindInPageHelper(browser: browser)
         findInPageHelper.delegate = self
         browser.addHelper(findInPageHelper, name: FindInPageHelper.name())
+
+        let printHelper = PrintHelper(browser: browser)
+        browser.addHelper(printHelper, name: PrintHelper.name())
 
         let openURL = {(url: NSURL) -> Void in
             self.switchToTabForURLOrOpen(url)
@@ -1735,14 +1744,16 @@ extension BrowserViewController: TabManagerDelegate {
                 if AboutUtils.isAboutURL(webView.URL) {
                     // Indeed, because we don't show the toolbar at all, don't even blank the star.
                 } else {
-                    profile.bookmarks.isBookmarked(url).uponQueue(dispatch_get_main_queue()) {
-                        guard let isBookmarked = $0.successValue else {
-                            log.error("Error getting bookmark status: \($0.failureValue).")
-                            return
-                        }
+                    profile.bookmarks.modelFactory >>== {
+                        $0.isBookmarked(url).uponQueue(dispatch_get_main_queue()) {
+                            guard let isBookmarked = $0.successValue else {
+                                log.error("Error getting bookmark status: \($0.failureValue).")
+                                return
+                            }
 
-                        self.toolbar?.updateBookmarkStatus(isBookmarked)
-                        self.urlBar.updateBookmarkStatus(isBookmarked)
+                            self.toolbar?.updateBookmarkStatus(isBookmarked)
+                            self.urlBar.updateBookmarkStatus(isBookmarked)
+                        }
                     }
                 }
             } else {
@@ -1809,20 +1820,11 @@ extension BrowserViewController: TabManagerDelegate {
         updateTabCountUsingTabManager(tabManager)
     }
 
-    private func isWebPage(url: NSURL) -> Bool {
-        let httpSchemes = ["http", "https"]
-
-        if let _ = httpSchemes.indexOf(url.scheme) {
-            return true
+    private func updateTabCountUsingTabManager(tabManager: TabManager, animated: Bool = true) {
+        if let selectedTab = tabManager.selectedTab {
+            let count = selectedTab.isPrivate ? tabManager.privateTabs.count : tabManager.normalTabs.count
+            urlBar.updateTabCount(max(count, 1), animated: animated)
         }
-
-        return false
-    }
-
-    func updateTabCountUsingTabManager(tabManager: TabManager, animated: Bool = true) {
-        let isPrivate = tabManager.selectedTab?.isPrivate ?? false
-        let count = isPrivate ? tabManager.privateTabs.count : tabManager.normalTabs.count
-        urlBar.updateTabCount(max(count, 1), animated: animated)
     }
 }
 
@@ -1850,38 +1852,33 @@ extension BrowserViewController: WKNavigationDelegate {
         }
     }
 
-    private func openExternal(url: NSURL, prompt: Bool = true) {
-        if prompt {
-            // Ask the user if it's okay to open the url with UIApplication.
-            let alert = UIAlertController(
-                title: String(format: NSLocalizedString("Opening %@", comment:"Opening an external URL"), url),
-                message: NSLocalizedString("This will open in another application", comment: "Opening an external app"),
-                preferredStyle: UIAlertControllerStyle.Alert
-            )
-
-            alert.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment:"Alert Cancel Button"), style: UIAlertActionStyle.Cancel, handler: { (action: UIAlertAction) in
-            }))
-
-            alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment:"Alert OK Button"), style: UIAlertActionStyle.Default, handler: { (action: UIAlertAction!) in
-                UIApplication.sharedApplication().openURL(url)
-            }))
-
-            presentViewController(alert, animated: true, completion: nil)
-        } else {
-            UIApplication.sharedApplication().openURL(url)
+    // Recognize an Apple Maps URL. This will trigger the native app. But only if a search query is present. Otherwise
+    // it could just be a visit to a regular page on maps.apple.com.
+    private func isAppleMapsURL(url: NSURL) -> Bool {
+        if url.scheme == "http" || url.scheme == "https" {
+            if url.host == "maps.apple.com" && url.query != nil {
+                return true
+            }
         }
+        return false
     }
 
-    private func callExternal(url: NSURL) {
-        if let phoneNumber = url.resourceSpecifier.stringByRemovingPercentEncoding {
-            let alert = UIAlertController(title: phoneNumber, message: nil, preferredStyle: UIAlertControllerStyle.Alert)
-            alert.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment:"Alert Cancel Button"), style: UIAlertActionStyle.Cancel, handler: nil))
-            alert.addAction(UIAlertAction(title: NSLocalizedString("Call", comment:"Alert Call Button"), style: UIAlertActionStyle.Default, handler: { (action: UIAlertAction!) in
-                UIApplication.sharedApplication().openURL(url)
-            }))
-            presentViewController(alert, animated: true, completion: nil)
+    // Recognize a iTunes Store URL. These all trigger the native apps. Note that appstore.com and phobos.apple.com
+    // used to be in this list. I have removed them because they now redirect to itunes.apple.com. If we special case
+    // them then iOS will actually first open Safari, which then redirects to the app store. This works but it will
+    // leave a 'Back to Safari' button in the status bar, which we do not want.
+    private func isStoreURL(url: NSURL) -> Bool {
+        if url.scheme == "http" || url.scheme == "https" {
+            if url.host == "itunes.apple.com" {
+                return true
+            }
         }
+        return false
     }
+
+    // This is the place where we decide what to do with a new navigation action. There are a number of special schemes
+    // and http(s) urls that need to be handled in a different way. All the logic for that is inside this delegate
+    // method.
 
     func webView(webView: WKWebView, decidePolicyForNavigationAction navigationAction: WKNavigationAction, decisionHandler: (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.URL else {
@@ -1889,44 +1886,72 @@ extension BrowserViewController: WKNavigationDelegate {
             return
         }
 
-        switch url.scheme {
-        case "about", "http", "https":
-            if isWhitelistedUrl(url) {
-                // If the url is whitelisted, we open it without prompting…
-                // … unless the NavigationType is Other, which means it is JavaScript- or Redirect-initiated.
-                openExternal(url, prompt: navigationAction.navigationType == WKNavigationType.Other)
-                decisionHandler(WKNavigationActionPolicy.Cancel)
-            } else {
-#if !BRAVE
-                if navigationAction.navigationType == .LinkActivated {
-                    resetSpoofedUserAgentIfRequired(webView, newURL: url)
-                } else if navigationAction.navigationType == .BackForward {
-                    restoreSpoofedUserAgentIfRequired(webView, newRequest: navigationAction.request)
-                }
-#endif
-                decisionHandler(WKNavigationActionPolicy.Allow)
-            }
-        case "tel":
-            callExternal(url)
-            decisionHandler(WKNavigationActionPolicy.Cancel)
-        default:
-            // If this is a scheme that we don't know how to handle, see if an external app
-            // can handle it. If not then we show an error page. In either case we cancel
-            // the request so that the webview does not see it.
-            if UIApplication.sharedApplication().canOpenURL(url) {
-                openExternal(url)
-            } else {
-                // Only show the error page if this was not a JavaScript initiated request. This prevents the error to overwrite apps that try to open native apps from an already loadeded page.
-                if navigationAction.navigationType != WKNavigationType.Other {
-                    ErrorPageHelper().showPage(NSError(domain: kCFErrorDomainCFNetwork as String, code: Int(CFNetworkErrors.CFErrorHTTPBadURL.rawValue), userInfo: [:]), forUrl: url, inWebView: webView)
-                }
-            }
-            decisionHandler(WKNavigationActionPolicy.Cancel)
+        // Fixes 1261457 - Rich text editor fails because requests to about:blank are blocked
+        if url.scheme == "about" && url.resourceSpecifier == "blank" {
+            decisionHandler(WKNavigationActionPolicy.Allow)
+            return
         }
+
+        // First special case are some schemes that are about Calling. We prompt the user to confirm this action. This
+        // gives us the exact same behaviour as Safari.
+
+        if url.scheme == "tel" || url.scheme == "facetime" || url.scheme == "facetime-audio" {
+            if let phoneNumber = url.resourceSpecifier.stringByRemovingPercentEncoding where !phoneNumber.isEmpty {
+                let formatter = PhoneNumberFormatter()
+                let formattedPhoneNumber = formatter.formatPhoneNumber(phoneNumber)
+                let alert = UIAlertController(title: formattedPhoneNumber, message: nil, preferredStyle: UIAlertControllerStyle.Alert)
+                alert.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment:"Alert Cancel Button"), style: UIAlertActionStyle.Cancel, handler: nil))
+                alert.addAction(UIAlertAction(title: NSLocalizedString("Call", comment:"Alert Call Button"), style: UIAlertActionStyle.Default, handler: { (action: UIAlertAction!) in
+                    UIApplication.sharedApplication().openURL(url)
+                }))
+                presentViewController(alert, animated: true, completion: nil)
+            }
+            decisionHandler(WKNavigationActionPolicy.Cancel)
+            return
+        }
+
+        // Second special case are a set of URLs that look like regular http links, but should be handed over to iOS
+        // instead of being loaded in the webview. Note that there is no point in calling canOpenURL() here, because
+        // iOS will always say yes. TODO Is this the same as isWhitelisted?
+
+        if isAppleMapsURL(url) || isStoreURL(url) {
+            UIApplication.sharedApplication().openURL(url)
+            decisionHandler(WKNavigationActionPolicy.Cancel)
+            return
+        }
+
+        // This is the normal case, opening a http or https url, which we handle by loading them in this WKWebView. We
+        // always allow this.
+
+        if url.scheme == "http" || url.scheme == "https" {
+            if navigationAction.navigationType == .LinkActivated {
+                resetSpoofedUserAgentIfRequired(webView, newURL: url)
+            } else if navigationAction.navigationType == .BackForward {
+                restoreSpoofedUserAgentIfRequired(webView, newRequest: navigationAction.request)
+            }
+            decisionHandler(WKNavigationActionPolicy.Allow)
+            return
+        }
+
+        // Default to calling openURL(). What this does depends on the iOS version. On iOS 8, it will just work without
+        // prompting. On iOS9, depending on the scheme, iOS will prompt: "Firefox" wants to open "Twitter". It will ask
+        // every time. There is no way around this prompt. (TODO Confirm this is true by adding them to the Info.plist)
+
+        UIApplication.sharedApplication().openURL(url)
+        decisionHandler(WKNavigationActionPolicy.Cancel)
     }
 
     func webView(webView: WKWebView, didReceiveAuthenticationChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
-      #if !BRAVE
+
+        // If this is a certificate challenge, see if the certificate has previously been
+        // accepted by the user.
+        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+           let trust = challenge.protectionSpace.serverTrust,
+           let cert = SecTrustGetCertificateAtIndex(trust, 0) where profile.certStore.containsCertificate(cert) {
+            completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: trust))
+            return
+        }
+
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic ||
               challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPDigest ||
               challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodNTLM,
@@ -2053,14 +2078,14 @@ extension BrowserViewController: WKUIDelegate {
             newTab = tabManager.addTab(navigationAction.request, configuration: configuration)
         }
         tabManager.selectTab(newTab)
-        
+
         // If the page we just opened has a bad scheme, we return nil here so that JavaScript does not
         // get a reference to it which it can return from window.open() - this will end up as a
         // CFErrorHTTPBadURL being presented.
         guard let scheme = navigationAction.request.URL?.scheme.lowercaseString where SchemesAllowedToOpenPopups.contains(scheme) else {
             return nil
         }
-        
+
         return newTab.webView
     }
 #endif
@@ -2107,27 +2132,6 @@ extension BrowserViewController: WKUIDelegate {
         }
     }
 #endif
-
-    /// Invoked when an error occurs during a committed main frame navigation.
-    func webView(webView: WKWebView, didFailNavigation navigation: WKNavigation!, withError error: NSError) {
-        if error.code == Int(CFNetworkErrors.CFURLErrorCancelled.rawValue) {
-            return
-        }
-
-        // Ignore the "Plug-in handled load" error. Which is more like a notification than an error.
-        // Note that there are no constants in the SDK for the WebKit domain or error codes.
-        if error.domain == "WebKitErrorDomain" && error.code == 204 {
-            return
-        }
-
-        if checkIfWebContentProcessHasCrashed(webView, error: error) {
-            return
-        }
-
-        if let url = error.userInfo["NSErrorFailingURLKey"] as? NSURL {
-            ErrorPageHelper().showPage(error, forUrl: url, inWebView: webView)
-        }
-    }
 
     /// Invoked when an error occurs while starting to load data for the main frame.
     func webView(webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: NSError) {
@@ -2203,7 +2207,7 @@ extension BrowserViewController: ReaderModeDelegate {
 
     // Returning None here makes sure that the Popover is actually presented as a Popover and
     // not as a full-screen modal, which is the default on compact device classes.
-    func adaptivePresentationStyleForPresentationController(controller: UIPresentationController) -> UIModalPresentationStyle {
+    func adaptivePresentationStyleForPresentationController(controller: UIPresentationController, traitCollection: UITraitCollection) -> UIModalPresentationStyle {
         return UIModalPresentationStyle.None
     }
 }
@@ -2481,7 +2485,7 @@ extension BrowserViewController: IntroViewControllerDelegate {
             let signInVC = FxAContentViewController()
             signInVC.delegate = self
             signInVC.url = profile.accountConfiguration.signInURL
-            signInVC.navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Cancel, target: self, action: "dismissSignInViewController")
+            signInVC.navigationItem.leftBarButtonItem = UIBarButtonItem(barButtonSystemItem: UIBarButtonSystemItem.Cancel, target: self, action: #selector(BrowserViewController.dismissSignInViewController))
             vcToPresent = signInVC
         }
 
@@ -2635,14 +2639,8 @@ extension BrowserViewController: ContextMenuHelperDelegate {
                         // Only set the image onto the pasteboard if the pasteboard hasn't changed since
                         // fetching the image; otherwise, in low-bandwidth situations,
                         // we might be overwriting something that the user has subsequently added.
-                        if changeCount == pasteboard.changeCount,
-                           let imageData = responseData where responseError == nil,
-                           let image = UIImage.imageFromDataThreadSafe(imageData) {
-                            // Setting pasteboard.items allows us to set multiple representations for the same item.
-                            pasteboard.items = [[
-                                kUTTypeURL as String: url,
-                                kUTTypePNG as String: image
-                            ]]
+                        if changeCount == pasteboard.changeCount, let imageData = responseData where responseError == nil {
+                            pasteboard.addImageWithData(imageData, forURL: url)
                         }
 
                         application.endBackgroundTask(taskId)
@@ -2669,7 +2667,7 @@ extension BrowserViewController: ContextMenuHelperDelegate {
             .validate(statusCode: 200..<300)
             .response { _, _, data, _ in
                 if let data = data,
-                   let image = UIImage.imageFromDataThreadSafe(data) {
+                   let image = UIImage.dataIsGIF(data) ? UIImage.imageFromGIFDataThreadSafe(data) : UIImage.imageFromDataThreadSafe(data) {
                     success(image)
                 }
             }

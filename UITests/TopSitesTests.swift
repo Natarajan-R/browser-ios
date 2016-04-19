@@ -7,6 +7,10 @@ import WebKit
 @testable import Storage
 @testable import Client
 
+/**
+ * WARNING: top sites deletion tests are flaky and sometimes fail.
+ * Bug raised for this https://bugzilla.mozilla.org/show_bug.cgi?id=1264286
+ */
 class TopSitesTests: KIFTestCase {
     private var webRoot: String!
 
@@ -68,11 +72,12 @@ class TopSitesTests: KIFTestCase {
         tester().tapViewWithAccessibilityLabel("Cancel")
     }
 
+    // Disabled (bug 1258544).
     func testChangingDyamicFontOnTopSites() {
         DynamicFontUtils.restoreDynamicFontSize(tester())
 
         createNewTab()
-        let thumbnail = tester().waitForViewWithAccessibilityLabel("The Mozilla Project")
+        let thumbnail = tester().waitForViewWithAccessibilityLabel("Facebook")
 
         let size = extractTextSizeFromThumbnail(thumbnail)
 
@@ -89,31 +94,60 @@ class TopSitesTests: KIFTestCase {
     }
 
     func testRemovingSite() {
-        // Load a page
-        tester().tapViewWithAccessibilityIdentifier("url")
-        let url1 = "\(webRoot)/numberedPage.html?page=1"
-        tester().clearTextFromAndThenEnterTextIntoCurrentFirstResponder("\(url1)\n")
-        tester().waitForWebViewElementWithAccessibilityLabel("Page 1")
+        // Switch to the Bookmarks panel so we can later reload Top Sites.
+        tester().tapViewWithAccessibilityLabel("Bookmarks")
 
-        // Open top sites
-        tester().tapViewWithAccessibilityIdentifier("url")
+        // Load a set of dummy domains.
+        for i in 1...10 {
+            BrowserUtils.addHistoryEntry("", url: NSURL(string: "https://test\(i).com")!)
+        }
+
+        // Switch back to the Top Sites panel.
         tester().tapViewWithAccessibilityLabel("Top sites")
 
-        // Verify the row exists and that the Remove Page button is hidden
-        let row = tester().waitForViewWithAccessibilityLabel("127.0.0.1")
+        // Remove the first site and verify that all other sites shift to replace it.
+        let collection = tester().waitForViewWithAccessibilityIdentifier("Top Sites View") as! UICollectionView
+
+        // Ensure that the last sites added are the first in the view. We don't know exactly
+        // how many thumbnails are visible since that's device-specific, but we can check a few.
+        verifyTopSites(collection, range: 5...10)
+
+        // Get the first cell (test10.com).
+        let cell = collection.visibleCells().first!
+
+        // Each thumbnail will have a remove button with the "Remove site" accessibility label, so
+        // we can't uniquely identify which remove button we want. Instead, just verify that "Remove site"
+        // labels are visible, and click the thumbnail at the top left (where the remove button is).
+        cell.longPressAtPoint(CGPointZero, duration: 1)
+        tester().waitForViewWithAccessibilityLabel("Remove page")
+        cell.tapAtPoint(CGPointZero)
+
+        // test9.com should now be first, followed by test8.com, etc.
+        verifyTopSites(collection, range: 4...9)
+
+        // Simulate loading a page in the background.
+        BrowserUtils.addHistoryEntry("", url: NSURL(string: "https://test99.com")!)
+
+        // Close editing mode.
+        tester().tapViewWithAccessibilityLabel("Done")
         tester().waitForAbsenceOfViewWithAccessibilityLabel("Remove page")
 
-        // Long press the row and click the remove button
-        row.longPressAtPoint(CGPointZero, duration: 1)
-        tester().tapViewWithAccessibilityLabel("Remove page")
-
-        // Close editing mode
-        tester().tapViewWithAccessibilityLabel("Done")
-
-        // Close top sites
-        tester().tapViewWithAccessibilityLabel("Cancel")
+        // Remove our dummy sites.
+        // TODO: This is painfully slow...let's find a better way to reset (bug 1191476).
+        BrowserUtils.clearHistoryItems(tester())
     }
 
+    private func verifyTopSites(collection: UICollectionView, range: Range<Int>) {
+        var item = 0
+        for i in range.reverse() {
+            let expected = tester().waitForViewWithAccessibilityLabel("test\(i).com")
+            let cell = collection.cellForItemAtIndexPath(NSIndexPath(forItem: item, inSection: 0)) as! ThumbnailCell
+            XCTAssertEqual(cell, expected)
+            item += 1
+        }
+    }
+
+    // This test doesn't seem very useful...remove it? (bug 1258548)
     func testRotationAndDeleteShowsCorrectTile() {
         // Load in the top Alexa sites to populate some top site tiles with
         let topDomainsPath = NSBundle.mainBundle().pathForResource("topdomains", ofType: "txt")!
@@ -160,6 +194,38 @@ class TopSitesTests: KIFTestCase {
 
         // Close top sites
         tester().tapViewWithAccessibilityLabel("Cancel")
+    }
+
+    func testRemovingSuggestedSites() {
+        // Delete the first three suggested tiles from top sites
+        let collection = tester().waitForViewWithAccessibilityIdentifier("Top Sites View") as! UICollectionView
+        let firstCell = collection.visibleCells().first!
+        firstCell.longPressAtPoint(CGPointZero, duration: 3)
+        tester().tapViewWithAccessibilityLabel("Remove page")
+        tester().waitForAnimationsToFinish()
+
+        tester().tapViewWithAccessibilityLabel("Remove page")
+        tester().waitForAnimationsToFinish()
+
+        tester().tapViewWithAccessibilityLabel("Remove page")
+        tester().waitForAnimationsToFinish()
+
+        // Close editing mode
+        tester().tapViewWithAccessibilityLabel("Done")
+
+        // Open new tab to check if changes persisted
+        createNewTab()
+
+        // Check that there are two suggested tiles left
+        XCTAssertTrue(collection.visibleCells().count == 2)
+
+        // Close extra tab and prepare for tear down
+        tester().tapViewWithAccessibilityLabel("Show Tabs")
+        let tabsView = tester().waitForViewWithAccessibilityLabel("Tabs Tray").subviews.first as! UICollectionView
+        let cell = tabsView.cellForItemAtIndexPath(NSIndexPath(forItem: 0, inSection: 0))!
+        tester().swipeViewWithAccessibilityLabel(cell.accessibilityLabel, inDirection: KIFSwipeDirection.Left)
+        tester().waitForAnimationsToFinish()
+        tester().tapViewWithAccessibilityLabel("home")
     }
 
     override func tearDown() {

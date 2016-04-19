@@ -41,6 +41,18 @@ class ClearPrivateDataTests: KIFTestCase, UITextFieldDelegate {
         tester().tapViewWithAccessibilityLabel(lastTabLabel)
     }
 
+    private func acceptClearPrivateData() {
+        tester().waitForViewWithAccessibilityLabel("OK")
+        tester().tapViewWithAccessibilityLabel("OK")
+        tester().waitForViewWithAccessibilityLabel("Clear Private Data")
+    }
+
+    private func cancelClearPrivateData() {
+        tester().waitForViewWithAccessibilityLabel("Clear")
+        tester().tapViewWithAccessibilityLabel("Cancel")
+        tester().waitForViewWithAccessibilityLabel("Clear Private Data")
+    }
+
     private func clearPrivateData(clearables: Set<Clearable>) {
         let webView = tester().waitForViewWithAccessibilityLabel("Web content") as! UIWebView
 
@@ -58,6 +70,7 @@ class ClearPrivateDataTests: KIFTestCase, UITextFieldDelegate {
         }
 
         tester().tapViewWithAccessibilityLabel("Clear Private Data", traits: UIAccessibilityTraitButton)
+        acceptClearPrivateData()
 
         closeClearPrivateDataDialog(lastTabLabel: lastTabLabel)
     }
@@ -99,6 +112,7 @@ class ClearPrivateDataTests: KIFTestCase, UITextFieldDelegate {
         ].forEach { clearable, value in
             XCTAssertEqual(value, tester().waitForViewWithAccessibilityLabel(clearable.rawValue).accessibilityValue)
         }
+
 
         closeClearPrivateDataDialog(lastTabLabel: "home")
     }
@@ -238,7 +252,7 @@ private class CachedPageServer {
     func start() -> String {
         let webServer = GCDWebServer()
         webServer.addHandlerForMethod("GET", path: "/cachedPage.html", requestClass: GCDWebServerRequest.self) { (request) -> GCDWebServerResponse! in
-            self.requests++
+            self.requests += 1
             return GCDWebServerDataResponse(HTML: "<html><head><title>Cached page</title></head><body>Cache test</body></html>")
         }
 

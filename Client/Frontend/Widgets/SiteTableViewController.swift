@@ -29,13 +29,13 @@ class SiteTableViewHeader : UITableViewHeaderFooterView {
     override init(reuseIdentifier: String?) {
         super.init(reuseIdentifier: reuseIdentifier)
 
-        topBorder.backgroundColor = SiteTableViewControllerUX.HeaderBorderColor
+        topBorder.backgroundColor = UIColor.whiteColor()
         bottomBorder.backgroundColor = SiteTableViewControllerUX.HeaderBorderColor
+        contentView.backgroundColor = UIColor.whiteColor()
 
-        titleLabel.font = SiteTableViewControllerUX.HeaderFont
+        titleLabel.font = DynamicFontHelper.defaultHelper.DeviceFontSmallLight
         titleLabel.textColor = SiteTableViewControllerUX.HeaderTextColor
         titleLabel.textAlignment = .Left
-        contentView.backgroundColor = SiteTableViewControllerUX.HeaderBackgroundColor
 
         addSubview(topBorder)
         addSubview(bottomBorder)
@@ -52,6 +52,8 @@ class SiteTableViewHeader : UITableViewHeaderFooterView {
             make.height.equalTo(0.5)
         }
 
+        // A table view will initialize the header with CGSizeZero before applying the actual size. Hence, the label's constraints
+        // must not impose a minimum width on the content view.
         titleLabel.snp_makeConstraints { make in
             make.left.equalTo(contentView).offset(SiteTableViewControllerUX.HeaderTextMargin).priority(999)
             make.right.equalTo(contentView).offset(-SiteTableViewControllerUX.HeaderTextMargin).priority(999)
@@ -89,7 +91,7 @@ class SiteTableViewController: UIViewController, UITableViewDelegate, UITableVie
 
         tableView.delegate = self
         tableView.dataSource = self
-        tableView.registerClass(TwoLineTableViewCell.self, forCellReuseIdentifier: CellIdentifier)
+        tableView.registerClass(HistoryTableViewCell.self, forCellReuseIdentifier: CellIdentifier)
         tableView.registerClass(SiteTableViewHeader.self, forHeaderFooterViewReuseIdentifier: HeaderIdentifier)
         tableView.layoutMargins = UIEdgeInsetsZero
         tableView.keyboardDismissMode = UIScrollViewKeyboardDismissMode.OnDrag
@@ -125,7 +127,11 @@ class SiteTableViewController: UIViewController, UITableViewDelegate, UITableVie
     }
 
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
-        return tableView.dequeueReusableCellWithIdentifier(CellIdentifier, forIndexPath: indexPath)
+        let cell = tableView.dequeueReusableCellWithIdentifier(CellIdentifier, forIndexPath: indexPath)
+        if self.tableView(tableView, hasFullWidthSeparatorForRowAtIndexPath: indexPath) {
+            cell.separatorInset = UIEdgeInsetsZero
+        }
+        return cell
     }
 
     func tableView(tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
@@ -138,5 +144,9 @@ class SiteTableViewController: UIViewController, UITableViewDelegate, UITableVie
 
     func tableView(tableView: UITableView, heightForRowAtIndexPath indexPath: NSIndexPath) -> CGFloat {
         return SiteTableViewControllerUX.RowHeight
+    }
+
+    func tableView(tableView: UITableView, hasFullWidthSeparatorForRowAtIndexPath indexPath: NSIndexPath) -> Bool {
+        return false
     }
 }

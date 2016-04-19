@@ -5,6 +5,8 @@
 import Foundation
 import Shared
 import Account
+import SwiftKeychainWrapper
+import LocalAuthentication
 
 // This file contains all of the settings available in the main settings screen of the app.
 
@@ -33,6 +35,8 @@ class ConnectSetting: WithoutAccountSetting {
         return NSAttributedString(string: NSLocalizedString("Sign In to Firefox", comment: "Text message / button in the settings table view"), attributes: [NSForegroundColorAttributeName: UIConstants.TableViewRowTextColor])
     }
 
+    override var accessibilityIdentifier: String? { return "SignInToFirefox" }
+
     override func onClick(navigationController: UINavigationController?) {
         let viewController = FxAContentViewController()
         viewController.delegate = self
@@ -49,6 +53,8 @@ class DisconnectSetting: WithAccountSetting {
     override var title: NSAttributedString? {
         return NSAttributedString(string: NSLocalizedString("Log Out", comment: "Button in settings screen to disconnect from your account"), attributes: [NSForegroundColorAttributeName: UIConstants.DestructiveRed])
     }
+
+    override var accessibilityIdentifier: String? { return "LogOut" }
 
     override func onClick(navigationController: UINavigationController?) {
         let alertController = UIAlertController(
@@ -402,7 +408,7 @@ class SendAnonymousUsageDataSetting: BoolSetting {
         super.init(
             prefs: prefs, prefKey: "settings.sendUsageData", defaultValue: true,
             attributedTitleText: NSAttributedString(string: NSLocalizedString("Send Anonymous Usage Data", tableName: "SendAnonymousUsageData", comment: "See http://bit.ly/1SmEXU1")),
-            attributedStatusText: NSAttributedString(string: NSLocalizedString("More Info…", tableName: "SendAnonymousUsageData", comment: "See http://bit.ly/1SmEXU1"), attributes: [NSForegroundColorAttributeName: UIColor.blueColor()]),
+            attributedStatusText: NSAttributedString(string: NSLocalizedString("More Info…", tableName: "SendAnonymousUsageData", comment: "See http://bit.ly/1SmEXU1"), attributes: [NSForegroundColorAttributeName: UIConstants.HighlightBlue]),
             settingDidChange: { AdjustIntegration.setEnabled($0) }
         )
     }
@@ -442,6 +448,8 @@ class SearchSetting: Setting {
 
     override var status: NSAttributedString { return NSAttributedString(string: profile.searchEngines.defaultEngine.shortName) }
 
+    override var accessibilityIdentifier: String? { return "Search" }
+
     init(settings: SettingsTableViewController) {
         self.profile = settings.profile
         super.init(title: NSAttributedString(string: NSLocalizedString("Default Search Engine", comment: "Open search section of settings"), attributes: [NSForegroundColorAttributeName: UIConstants.TableViewRowTextColor]))
@@ -456,23 +464,55 @@ class SearchSetting: Setting {
 
 class LoginsSetting: Setting {
     let profile: Profile
-    //var tabManager: TabManager!
+    ///var tabManager: TabManager!
+    weak var navigationController: UINavigationController?
 
     override var accessoryType: UITableViewCellAccessoryType { return .DisclosureIndicator }
 
+    override var accessibilityIdentifier: String? { return "Logins" }
+
     init(settings: SettingsTableViewController, delegate: SettingsDelegate?) {
         self.profile = settings.profile
-        //self.tabManager = settings.tabManager
+        ///self.tabManager = settings.tabManager
+        self.navigationController = settings.navigationController
 
         let loginsTitle = NSLocalizedString("Logins", comment: "Label used as an item in Settings. When touched, the user will be navigated to the Logins/Password manager.")
         super.init(title: NSAttributedString(string: loginsTitle, attributes: [NSForegroundColorAttributeName: UIConstants.TableViewRowTextColor]),
                    delegate: delegate)
     }
 
-    override func onClick(navigationController: UINavigationController?) {
+    override func onClick(_: UINavigationController?) {
+        guard let authInfo = KeychainWrapper.authenticationInfo() else {
+            navigateToLoginsList()
+            return
+        }
+
+        if AppConstants.MOZ_AUTHENTICATION_MANAGER && authInfo.requiresValidation() {
+            AppAuthenticator.presentAuthenticationUsingInfo(authInfo,
+            touchIDReason: AuthenticationStrings.loginsTouchReason,
+            success: {
+                self.navigateToLoginsList()
+            },
+            fallback: {
+                AppAuthenticator.presentPasscodeAuthentication(self.navigationController, delegate: self)
+            })
+        } else {
+            self.navigateToLoginsList()
+        }
+    }
+
+    private func navigateToLoginsList() {
         let viewController = LoginListViewController(profile: profile)
         viewController.settingsDelegate = delegate
         navigationController?.pushViewController(viewController, animated: true)
+    }
+}
+
+extension LoginsSetting: PasscodeEntryDelegate {
+    @objc func passcodeValidationDidSucceed() {
+        navigationController?.dismissViewControllerAnimated(true) {
+            self.navigateToLoginsList()
+        }
     }
 }
 
@@ -482,11 +522,18 @@ class TouchIDPasscodeSetting: Setting {
 
     override var accessoryType: UITableViewCellAccessoryType { return .DisclosureIndicator }
 
+    override var accessibilityIdentifier: String? { return "TouchIDPasscode" }
+
     init(settings: SettingsTableViewController, delegate: SettingsDelegate? = nil) {
         self.profile = settings.profile
         //self.tabManager = settings.tabManager
 
-        let title = NSLocalizedString("Touch ID & Passcode", tableName: "AuthenticationManager", comment: "Title for Touch ID/Passcode settings option")
+        let title: String
+        if LAContext().canEvaluatePolicy(.DeviceOwnerAuthenticationWithBiometrics, error: nil) {
+            title = AuthenticationStrings.touchIDPasscodeSetting
+        } else {
+            title = AuthenticationStrings.passcode
+        }
         super.init(title: NSAttributedString(string: title, attributes: [NSForegroundColorAttributeName: UIConstants.TableViewRowTextColor]),
                    delegate: delegate)
     }
@@ -504,11 +551,13 @@ class ClearPrivateDataSetting: Setting {
 
     override var accessoryType: UITableViewCellAccessoryType { return .DisclosureIndicator }
 
+    override var accessibilityIdentifier: String? { return "ClearPrivateData" }
+
     init(settings: SettingsTableViewController) {
         self.profile = settings.profile
         //self.tabManager = settings.tabManager
 
-        let clearTitle = NSLocalizedString("Clear Private Data", comment: "Label used as an item in Settings. When touched it will open a dialog prompting the user to make sure they want to clear all of their private data.")
+        let clearTitle = Strings.SettingsClearPrivateDataSectionName
         super.init(title: NSAttributedString(string: clearTitle, attributes: [NSForegroundColorAttributeName: UIConstants.TableViewRowTextColor]))
     }
 
@@ -551,7 +600,7 @@ class ChinaSyncServiceSetting: WithoutAccountSetting {
         super.onConfigureCell(cell)
         let control = UISwitch()
         control.onTintColor = UIConstants.ControlTintColor
-        control.addTarget(self, action: "switchValueChanged:", forControlEvents: UIControlEvents.ValueChanged)
+        control.addTarget(self, action: #selector(ChinaSyncServiceSetting.switchValueChanged(_:)), forControlEvents: UIControlEvents.ValueChanged)
         control.on = prefs.boolForKey(prefKey) ?? true
         cell.accessoryView = control
         cell.selectionStyle = .None
