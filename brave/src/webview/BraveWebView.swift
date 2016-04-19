@@ -87,7 +87,7 @@ class BraveWebView: UIWebView {
     static var webViewCounter = 0
     // Needed to identify webview in url protocol
     func generateUniqueUserAgent() {
-        BraveWebView.webViewCounter++
+        BraveWebView.webViewCounter += 1
         if let webviewBuiltinUserAgent = BraveWebView.webviewBuiltinUserAgent {
             let userAgent = webviewBuiltinUserAgent + String(format:" _id/%06d", BraveWebView.webViewCounter)
             let defaults = NSUserDefaults(suiteName: AppInfo.sharedContainerIdentifier())!
@@ -111,7 +111,7 @@ class BraveWebView: UIWebView {
             // the first created webview doesn't have this id set (see webviewBuiltinUserAgent to explain)
             return idToWebview.objectForKey(1) as? BraveWebView
         }
-        let keyString = ua.substringWithRange(Range(start: loc.endIndex, end: loc.endIndex.advancedBy(6)))
+        let keyString = ua.substringWithRange(loc.endIndex..<loc.endIndex.advancedBy(6))
         guard let key = Int(keyString) else { return nil }
         return idToWebview.objectForKey(key) as? BraveWebView
     }
@@ -125,10 +125,9 @@ class BraveWebView: UIWebView {
         }
 
         // Add a time delay so that multiple calls are aggregated
-        triggeredLocationCheckTimer = NSTimer.scheduledTimerWithTimeInterval(0.15, target: self, selector: kTimeoutCheckLocation, userInfo: nil, repeats: false)
+        triggeredLocationCheckTimer = NSTimer.scheduledTimerWithTimeInterval(0.15, target: self, selector: #selector(timeoutCheckLocation), userInfo: nil, repeats: false)
     }
 
-    let kTimeoutCheckLocation = Selector("timeoutCheckLocation")
     @objc func timeoutCheckLocation() {
         if loading {
             return
@@ -228,7 +227,7 @@ class BraveWebView: UIWebView {
     override func loadRequest(request: NSURLRequest) {
         guard let internalWebView = valueForKeyPath("documentView.webView") else { return }
         NSNotificationCenter.defaultCenter().removeObserver(self, name: internalProgressChangedNotification, object: internalWebView)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "internalProgressNotification:", name: internalProgressChangedNotification, object: internalWebView)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(BraveWebView.internalProgressNotification(_:)), name: internalProgressChangedNotification, object: internalWebView)
 
         if let url = request.URL where !url.absoluteString.contains(specialStopLoadUrl) {
             URL = request.URL

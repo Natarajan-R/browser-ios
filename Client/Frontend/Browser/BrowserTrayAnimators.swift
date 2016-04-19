@@ -88,8 +88,8 @@ private extension TrayToBrowserAnimator {
             // Push out the navigation bar buttons
             let buttonOffset = tabTray.addTabButton.frame.width + TabTrayControllerUX.ToolbarButtonOffset
             tabTray.addTabButton.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, buttonOffset , 0)
-            tabTray.settingsButton.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, -buttonOffset , 0)
 #if !BRAVE
+    tabTray.settingsButton.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, -buttonOffset , 0)
           if #available(iOS 9, *) {
                 tabTray.togglePrivateMode.transform = CGAffineTransformTranslate(CGAffineTransformIdentity, buttonOffset , 0)
             }
@@ -188,7 +188,7 @@ private extension BrowserToTrayAnimator {
                 bvc.footer.alpha = 0
                 tabCollectionViewSnapshot.alpha = 1
 
-                var viewsToReset: [UIView?] = [tabCollectionViewSnapshot, tabTray.addTabButton, tabTray.settingsButton]
+                var viewsToReset: [UIView?] = [tabCollectionViewSnapshot, tabTray.addTabButton]
 #if !BRAVE
               if #available(iOS 9, *) {
                     viewsToReset.append(tabTray.togglePrivateMode)

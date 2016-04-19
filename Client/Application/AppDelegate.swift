@@ -261,7 +261,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             // Otherwise, we remember the URL and we open it in applicationDidBecomeActive.
             launchFromURL(params)
         } else {
-            openInFirefoxParams = params
+            openInBraveParams = params
         }
 
         return true

@@ -20,7 +20,7 @@ class TrackingProtection {
     }
 
     private init() {
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "prefsChanged:", name: NSUserDefaultsDidChangeNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(TrackingProtection.prefsChanged(_:)), name: NSUserDefaultsDidChangeNotification, object: nil)
         updateEnabledState()
     }
 

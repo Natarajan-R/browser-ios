@@ -27,7 +27,7 @@ class WebServer {
             try server.startWithOptions([GCDWebServerOption_Port: WebServer.port, GCDWebServerOption_BindToLocalhost: true, GCDWebServerOption_AutomaticallySuspendInBackground: true])
           } catch {
             if (WebServer.port < WebServer.kMaxPortNum) {
-                WebServer.port++
+                WebServer.port += 1
                 return try start()
             }
           }

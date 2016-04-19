@@ -32,7 +32,7 @@ class BraveBrowserBottomToolbar : BrowserToolbar {
     lazy var tabsButton: TabsButton = {
         let tabsButton = TabsButton()
         tabsButton.titleLabel.text = "\(tabsCount)"
-        tabsButton.addTarget(self, action: "onClickShowTabs", forControlEvents: UIControlEvents.TouchUpInside)
+        tabsButton.addTarget(self, action: #selector(BraveBrowserBottomToolbar.onClickShowTabs), forControlEvents: UIControlEvents.TouchUpInside)
         tabsButton.accessibilityLabel = NSLocalizedString("Show Tabs",
             comment: "Accessibility Label for the tabs button in the browser toolbar")
         return tabsButton
@@ -42,7 +42,7 @@ class BraveBrowserBottomToolbar : BrowserToolbar {
         let button = UIButton()
         let image = UIImage(named: "add")
         button.accessibilityLabel = NSLocalizedString("Add Tab", comment: "Accessibility label for the bottom toolbar add tab button")
-        button.addTarget(self, action: "onClickAddTab", forControlEvents: UIControlEvents.TouchUpInside)
+        button.addTarget(self, action: #selector(BraveBrowserBottomToolbar.onClickAddTab), forControlEvents: UIControlEvents.TouchUpInside)
 
         // Button is grey without upping the brightness
         // TODO remove this when the icon changes

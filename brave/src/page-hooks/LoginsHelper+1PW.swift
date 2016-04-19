@@ -21,8 +21,8 @@ struct ThirdPartyPasswordManagers {
 extension LoginsHelper {
     func thirdPartyPasswordRegisterPageListeners() {
         guard let wv = browser?.webView else { return }
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "hideOnPageChange:", name: kNotificationPageUnload, object: wv)
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "checkOnPageLoaded:", name: BraveWebView.kNotificationWebViewLoadCompleteOrFailed, object: wv)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(LoginsHelper.hideOnPageChange(_:)), name: kNotificationPageUnload, object: wv)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(LoginsHelper.checkOnPageLoaded(_:)), name: BraveWebView.kNotificationWebViewLoadCompleteOrFailed, object: wv)
     }
 
     func thirdPartyPasswordSnackbar() {
@@ -63,11 +63,11 @@ extension LoginsHelper {
                     let button = UIButton()
                     button.autoresizingMask = [.FlexibleWidth, .FlexibleHeight]
                     safeSelf.snackBar!.addSubview(button)
-                    button.addTarget(self, action: "onExecuteTapped", forControlEvents: .TouchUpInside)
+                    button.addTarget(self, action: #selector(LoginsHelper.onExecuteTapped), forControlEvents: .TouchUpInside)
 
                     let close = UIButton(frame: CGRectMake(safeSelf.snackBar!.frame.width - 40, 0, 40, 40))
                     close.setImage(UIImage(named: "stop")!, forState: .Normal)
-                    close.addTarget(self, action: "onCloseTapped", forControlEvents: .TouchUpInside)
+                    close.addTarget(self, action: #selector(LoginsHelper.onCloseTapped), forControlEvents: .TouchUpInside)
                     close.tintColor = UIColor.blackColor()
                     close.autoresizingMask = [.FlexibleLeftMargin]
                     safeSelf.snackBar!.addSubview(close)

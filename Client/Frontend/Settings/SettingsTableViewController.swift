@@ -38,7 +38,7 @@ class Setting {
     var accessoryType: UITableViewCellAccessoryType { return .None }
 
     var textAlignment: NSTextAlignment { return .Left }
-    
+
     private(set) var enabled: Bool = true
 
     // Called when the cell is setup. Call if you need the default behaviour.
@@ -268,7 +268,7 @@ class SettingsTableViewController: UITableViewController {
     weak var settingsDelegate: SettingsDelegate?
 
     var profile: Profile!
-    //var tabManager: TabManager!
+    ///var tabManager: TabManager!
 
     /// Used to calculate cell heights.
     private lazy var dummyToggleCell: UITableViewCell = {
@@ -279,7 +279,7 @@ class SettingsTableViewController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         tableView.registerClass(UITableViewCell.self, forCellReuseIdentifier: Identifier)
         tableView.registerClass(SettingsTableSectionHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: SectionHeaderIdentifier)
         #if BRAVE
@@ -294,14 +294,14 @@ class SettingsTableViewController: UITableViewController {
         tableView.estimatedSectionHeaderHeight = 44
     }
 
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+
         settings = generateSettings()
 
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SettingsTableViewController.SELsyncDidChangeState), name: NotificationProfileDidStartSyncing, object: nil)
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SettingsTableViewController.SELsyncDidChangeState), name: NotificationProfileDidFinishSyncing, object: nil)
         NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SettingsTableViewController.SELfirefoxAccountDidChange), name: NotificationFirefoxAccountChanged, object: nil)
-
-    override func viewWillAppear(animated: Bool) {
-        super.viewWillAppear(animated)
 
         tableView.reloadData()
     }
@@ -421,8 +421,8 @@ class SettingsTableViewController: UITableViewController {
 
         return
             heightForLabel(dummyToggleCell.textLabel!, width: width, text: setting.title?.string) +
-            heightForLabel(dummyToggleCell.detailTextLabel!, width: width, text: setting.status?.string) +
-            2 * topBottomMargin
+                heightForLabel(dummyToggleCell.detailTextLabel!, width: width, text: setting.status?.string) +
+                2 * topBottomMargin
     }
 
     private func heightForLabel(label: UILabel, width: CGFloat, text: String?) -> CGFloat {
@@ -431,7 +431,7 @@ class SettingsTableViewController: UITableViewController {
         let size = CGSize(width: width, height: CGFloat.max)
         let attrs = [NSFontAttributeName: label.font]
         let boundingRect = NSString(string: text).boundingRectWithSize(size,
-            options: NSStringDrawingOptions.UsesLineFragmentOrigin, attributes: attrs, context: nil)
+                                                                       options: NSStringDrawingOptions.UsesLineFragmentOrigin, attributes: attrs, context: nil)
         return boundingRect.height
     }
 }

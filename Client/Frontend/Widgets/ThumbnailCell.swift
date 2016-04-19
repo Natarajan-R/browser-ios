@@ -14,8 +14,8 @@ struct ThumbnailCellUX {
     static let LabelBackgroundColor = UIColor(white: 1.0, alpha: 0.5)
     static let LabelAlignment: NSTextAlignment = .Center
     static let SelectedOverlayColor = UIColor(white: 0.0, alpha: 0.25)
-    static let InsetSize: CGFloat = 20
-    static let InsetSizeCompact: CGFloat = 6
+//    static let InsetSize: CGFloat = 20
+//    static let InsetSizeCompact: CGFloat = 6
 #if BRAVE
     static let InsetSize: CGFloat = 10
     static let InsetSizeCompact: CGFloat = 3

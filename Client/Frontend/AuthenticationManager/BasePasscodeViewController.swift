@@ -5,7 +5,7 @@
 import Foundation
 import Shared
 import SwiftKeychainWrapper
-
+import Storage
 /// Base UIViewController subclass containing methods for displaying common error messaging 
 /// for the various Passcode configuration screens.
 class BasePasscodeViewController: UIViewController {

@@ -76,7 +76,7 @@ class BraveTopViewController : UIViewController {
 
         NSNotificationCenter.defaultCenter().addObserver(self, selector: NSSelectorFromString(SEL_onClickBraveButton), name: kNotificationBraveButtonClicked, object: nil)
 
-        clickDetectionView.addTarget(self, action: "dismissAllSidePanels:", forControlEvents: UIControlEvents.TouchUpInside)
+        clickDetectionView.addTarget(self, action: #selector(BraveTopViewController.dismissAllSidePanels(_:)), forControlEvents: UIControlEvents.TouchUpInside)
 
         mainSidePanel.browserViewController = browserViewController
     }

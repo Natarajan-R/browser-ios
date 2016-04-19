@@ -5,6 +5,7 @@
 import Foundation
 import Shared
 import SwiftKeychainWrapper
+import Storage
 
 let NotificationPasscodeDidCreate   = "NotificationPasscodeDidCreate"
 

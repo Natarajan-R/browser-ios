@@ -56,7 +56,7 @@ public class WebViewProgress
             ensureMainThread() { // ensure closure is on main thread
                 if !(self.webView?.loading ?? true) && self.webView?.estimatedProgress < 1.0 {
                     self.timer?.invalidate()
-                    self.timer = NSTimer.scheduledTimerWithTimeInterval(0.5, target: self, selector: "delayedCompletionCheck", userInfo: nil, repeats: false)
+                    self.timer = NSTimer.scheduledTimerWithTimeInterval(0.5, target: self, selector: #selector(LoadingObserver.delayedCompletionCheck), userInfo: nil, repeats: false)
                 } else {
                     self.timer?.invalidate()
                 }
@@ -139,7 +139,7 @@ public class WebViewProgress
     }
 
     public func webViewDidStartLoad() {
-        loadingCount++
+        loadingCount += 1
         maxLoadCount = max(maxLoadCount, loadingCount)
         startProgress()
 

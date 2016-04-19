@@ -5,6 +5,7 @@
 import Foundation
 import Shared
 import SwiftKeychainWrapper
+import Storage
 
 /// Screen presented to the user when selecting the time interval before requiring a passcode
 class RequirePasscodeIntervalViewController: UITableViewController {

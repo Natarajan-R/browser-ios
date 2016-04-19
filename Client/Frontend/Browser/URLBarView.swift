@@ -399,19 +399,19 @@ class URLBarView: UIView {
         if currentCount == count.description {
             return
         }
-
-            // make a 'clone' of the tabs button
-            let newTabsButton = self.tabsButton.clone() as! TabsButton
-            self.clonedTabsButton = newTabsButton
-            newTabsButton.addTarget(self, action: #selector(URLBarView.SELdidClickAddTab), forControlEvents: UIControlEvents.TouchUpInside)
-            newTabsButton.titleLabel.text = count.description
-            newTabsButton.accessibilityValue = count.description
-            addSubview(newTabsButton)
-            newTabsButton.snp_makeConstraints { make in
-                make.centerY.equalTo(self.locationContainer)
-                make.trailing.equalTo(self)
-                make.size.equalTo(UIConstants.ToolbarHeight)
-            }
+//
+//            // make a 'clone' of the tabs button
+//            let newTabsButton = self.tabsButton.clone() as! TabsButton
+//            self.clonedTabsButton = newTabsButton
+//            newTabsButton.addTarget(self, action: #selector(URLBarView.SELdidClickAddTab), forControlEvents: UIControlEvents.TouchUpInside)
+//            newTabsButton.titleLabel.text = count.description
+//            newTabsButton.accessibilityValue = count.description
+//            addSubview(newTabsButton)
+//            newTabsButton.snp_makeConstraints { make in
+//                make.centerY.equalTo(self.locationContainer)
+//                make.trailing.equalTo(self)
+//                make.size.equalTo(UIConstants.ToolbarHeight)
+//            }
 
         // make a 'clone' of the tabs button
         let newTabsButton = tabsButton.clone() as! TabsButton

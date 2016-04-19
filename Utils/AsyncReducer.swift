@@ -4,7 +4,7 @@
 
 import Foundation
 import Deferred
-
+import Shared
 private let DefaultDispatchQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)
 
 public func asyncReducer<T, U>(initialValue: T, combine: (T, U) -> Deferred<Maybe<T>>) -> AsyncReducer<T, U> {

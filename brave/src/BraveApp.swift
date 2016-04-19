@@ -77,13 +77,13 @@ class BraveApp {
         NSURLProtocol.registerClass(URLProtocol);
 
         NSNotificationCenter.defaultCenter().addObserver(BraveApp.singleton,
-            selector: "didEnterBackground:", name: UIApplicationDidEnterBackgroundNotification, object: nil)
+            selector: #selector(BraveApp.didEnterBackground(_:)), name: UIApplicationDidEnterBackgroundNotification, object: nil)
 
         NSNotificationCenter.defaultCenter().addObserver(BraveApp.singleton,
-            selector: "willEnterForeground:", name: UIApplicationWillEnterForegroundNotification, object: nil)
+            selector: #selector(BraveApp.willEnterForeground(_:)), name: UIApplicationWillEnterForegroundNotification, object: nil)
 
         NSNotificationCenter.defaultCenter().addObserver(BraveApp.singleton,
-            selector: "memoryWarning:", name: UIApplicationDidReceiveMemoryWarningNotification, object: nil)
+            selector: #selector(BraveApp.memoryWarning(_:)), name: UIApplicationDidReceiveMemoryWarningNotification, object: nil)
 
         #if !TEST
         //  these quiet the logging from the core of fx ios

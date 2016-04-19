@@ -52,7 +52,7 @@ def modpbxproj():
             g = project.get_or_create_group(folder, path='brave/' + root + '/' + folder, parent=group)
             groups['brave/' + root + '/' + folder] = g
         for file in files:
-            if file.endswith('.h') or file.endswith('.js') or file.endswith('.swift') or file.endswith('.m') or file.endswith('.mm'):
+            if any(file.endswith(x) for x in ['.h', '.js', '.swift', '.m', '.mm', '.html']):
                 p = groups['brave/' + root]
                 if 'test' in root:
                     # add only to the test target

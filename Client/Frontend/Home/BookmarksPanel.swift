@@ -283,7 +283,9 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
 
         switch (bookmark) {
         case let item as BookmarkItem:
-            homePanelDelegate?.homePanel(self, didSelectURLString: item.url, visitType: VisitType.Bookmark)
+            if let url = NSURL(string: item.url) {
+                homePanelDelegate?.homePanel(self, didSelectURL: url, visitType: VisitType.Bookmark)
+            }
             break
 
         case let folder as BookmarkFolder:
@@ -328,7 +330,6 @@ class BookmarksPanel: SiteTableViewController, HomePanel {
         }
 
         return .None
-#endif
     }
 
     func tableView(tableView: UITableView, editActionsForRowAtIndexPath indexPath: NSIndexPath) -> [AnyObject]? {

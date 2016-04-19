@@ -7,6 +7,7 @@ import UIKit
 import Shared
 import SwiftKeychainWrapper
 import LocalAuthentication
+import Storage
 
 private let logger = Logger.browserLogger
 

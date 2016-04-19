@@ -107,7 +107,7 @@ class ClearPrivateDataTableViewController: UITableViewController {
     override func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath) {
         guard indexPath.section == SectionButton else { return }
 
-        func clearPrivateData(action: UIAlertAction) {
+        func clearPrivateData() {
             let toggles = self.toggles
             self.clearables
                 .enumerate()

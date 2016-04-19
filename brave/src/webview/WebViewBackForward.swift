@@ -83,7 +83,7 @@ class WebViewBackForwardList {
                 foundCurrent = true
                 cachedHistoryStringPositionOfCurrentMarker = rangeStart
             }
-            i++
+            i += 1
         }
         if !foundCurrent {
             currentIndex = 0

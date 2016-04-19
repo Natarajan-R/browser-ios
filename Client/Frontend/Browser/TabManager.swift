@@ -148,7 +148,7 @@ class TabManager : NSObject {
         return tabs[index]
     }
 
-    subscript(webView: WKWebView) -> Browser? {
+    func tabForWebView(webView: UIWebView) -> Browser? {
         assert(NSThread.isMainThread())
 
         for tab in tabs {
@@ -277,7 +277,7 @@ class TabManager : NSObject {
         var webviews = 0
         for browser in tabs {
             if browser.webView != nil {
-                webviews++
+                webviews += 1
             }
         }
         if webviews < maxInMemTabs {
@@ -311,11 +311,7 @@ class TabManager : NSObject {
     private func addTab(request: NSURLRequest? = nil, configuration: WKWebViewConfiguration? = nil, flushToDisk: Bool, zombie: Bool, isPrivate: Bool) -> Browser {
         assert(NSThread.isMainThread())
 
-        if configuration == nil {
-            configuration = isPrivate ? privateConfiguration : self.configuration
-        }
-
-        let tab = Browser(configuration: configuration, isPrivate: isPrivate)
+        let tab = Browser(configuration: isPrivate ? privateConfiguration : self.configuration, isPrivate: isPrivate)
         ensureMainThread() {
             self.configureTab(tab, request: request, flushToDisk: flushToDisk, zombie: zombie)
         }
@@ -372,8 +368,7 @@ class TabManager : NSObject {
         }
 
         // If the removed tab was selected, find the new tab to select.
-        if tab === selectedTab {
-            let index = getIndex(tab)
+        if let index = getIndex(tab) where tab === selectedTab {
             if index + 1 < tabCount {
                 selectTab(tabs[index + 1])
             } else if index - 1 >= 0 {
@@ -398,7 +393,7 @@ class TabManager : NSObject {
 
         #if BRAVE
             if removedIndex < _selectedIndex {
-                _selectedIndex--
+                _selectedIndex -= 1
             }
         #endif
 
@@ -444,7 +439,7 @@ class TabManager : NSObject {
         storeChanges()
     }
 
-    func getIndex(tab: Browser) -> Int {
+    func getIndex(tab: Browser) -> Int? {
        assert(NSThread.isMainThread())
 
         for i in 0..<tabCount {
@@ -471,7 +466,7 @@ class TabManager : NSObject {
     }
 
     func prefsDidChange() {
-if !BRAVE
+#if !BRAVE
         dispatch_async(dispatch_get_main_queue()) {
             let allowPopups = !(self.prefs.boolForKey("blockPopups") ?? true)
             // Each tab may have its own configuration, so we should tell each of them in turn.

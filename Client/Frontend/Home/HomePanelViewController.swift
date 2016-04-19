@@ -38,7 +38,7 @@ protocol HomePanelDelegate: class {
     func homePanelDidRequestToSignIn(homePanel: HomePanel)
     func homePanelDidRequestToCreateAccount(homePanel: HomePanel)
     func homePanel(homePanel: HomePanel, didSelectURL url: NSURL, visitType: VisitType)
-    func homePanel(homePanel: HomePanel, didSelectURLString url: String, visitType: VisitType)
+    optional func homePanel(homePanel: HomePanel, didSelectURLString url: String, visitType: VisitType)
     optional func homePanelWillEnterEditingMode(homePanel: HomePanel)
 }
 

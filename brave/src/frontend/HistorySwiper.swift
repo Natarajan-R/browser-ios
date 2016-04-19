@@ -62,13 +62,13 @@ class HistorySwiper : NSObject {
     }
 
     lazy var goBackSwipe: UIGestureRecognizer = {
-        let pan = UIPanGestureRecognizer(target: self, action: "screenLeftEdgeSwiped:")
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(HistorySwiper.screenLeftEdgeSwiped(_:)))
         self.topLevelView.superview!.addGestureRecognizer(pan)
         return pan
     }()
 
     lazy var goForwardSwipe: UIGestureRecognizer = {
-        let pan = UIPanGestureRecognizer(target: self, action: "screenRightEdgeSwiped:")
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(HistorySwiper.screenRightEdgeSwiped(_:)))
         self.topLevelView.superview!.addGestureRecognizer(pan)
         return pan
     }()
@@ -117,8 +117,8 @@ class HistorySwiper : NSObject {
                             self.restoreWebview()
                         }
                         NSNotificationCenter.defaultCenter().removeObserver(self)
-                        NSNotificationCenter.defaultCenter().addObserver(self, selector: "updateDetected", name: BraveWebView.kNotificationPageInteractive, object: webview)
-                        NSNotificationCenter.defaultCenter().addObserver(self, selector: "updateDetected", name: BraveWebView.kNotificationWebViewLoadCompleteOrFailed, object: webview)
+                        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(HistorySwiper.updateDetected), name: BraveWebView.kNotificationPageInteractive, object: webview)
+                        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(HistorySwiper.updateDetected), name: BraveWebView.kNotificationWebViewLoadCompleteOrFailed, object: webview)
                     } else {
                         getApp().browserViewController.scrollController.edgeSwipingActive = false
 #if IMAGE_SWIPE_ON

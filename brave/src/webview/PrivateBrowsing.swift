@@ -92,7 +92,7 @@ class PrivateBrowsing {
             }
         }
 
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "cookiesChanged:", name: NSHTTPCookieManagerCookiesChangedNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(PrivateBrowsing.cookiesChanged(_:)), name: NSHTTPCookieManagerCookiesChangedNotification, object: nil)
 
         webkitDirLocker(lock: true)
     }
@@ -144,6 +144,6 @@ class PrivateBrowsing {
             storage.setCookie(c)
         }
 
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "cookiesChanged:", name: NSHTTPCookieManagerCookiesChangedNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(PrivateBrowsing.cookiesChanged(_:)), name: NSHTTPCookieManagerCookiesChangedNotification, object: nil)
         }
 }

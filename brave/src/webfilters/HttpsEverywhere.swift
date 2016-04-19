@@ -27,7 +27,7 @@ class HttpsEverywhere {
     }
 
     private init() {
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "prefsChanged:", name: NSUserDefaultsDidChangeNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(HttpsEverywhere.prefsChanged(_:)), name: NSUserDefaultsDidChangeNotification, object: nil)
         updateEnabledState()
     }
 
@@ -130,7 +130,7 @@ class HttpsEverywhere {
 
         for row in db.prepare(query) {
             var data = row.get(ids)
-            data = data.substringWithRange(Range(start: data.startIndex.advancedBy(1),end: data.endIndex.advancedBy(-1)))
+            data = data.substringWithRange(data.startIndex.advancedBy(1)..<data.endIndex.advancedBy(-1))
             if let loc = data.rangeOfString(",")?.startIndex {
                 data = data.substringToIndex(loc)
             }

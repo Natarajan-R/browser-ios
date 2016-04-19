@@ -24,7 +24,7 @@ class SafeBrowsing {
     var isEnabled = true
 
     private init() {
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "prefsChanged:", name: NSUserDefaultsDidChangeNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(SafeBrowsing.prefsChanged(_:)), name: NSUserDefaultsDidChangeNotification, object: nil)
         updateEnabledState()
     }
 

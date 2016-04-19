@@ -4,6 +4,7 @@
 
 import Foundation
 import Shared
+import Storage
 
 // Strings for the passcode intervals.
 extension PasscodeInterval {

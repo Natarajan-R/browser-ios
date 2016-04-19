@@ -24,7 +24,7 @@ class AdBlocker {
     var isEnabled = true
 
     private init() {
-        NSNotificationCenter.defaultCenter().addObserver(self, selector: "prefsChanged:", name: NSUserDefaultsDidChangeNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(AdBlocker.prefsChanged(_:)), name: NSUserDefaultsDidChangeNotification, object: nil)
         updateEnabledState()
     }
 
@@ -98,7 +98,7 @@ class AdBlocker {
                 startTime = time
                 redirects = 0
             }
-            redirects++
+            redirects += 1
         }
     }
 

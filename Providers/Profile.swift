@@ -642,7 +642,7 @@ public class BrowserProfile: Profile {
                 return
             }
 
-            guard let validations = (notification.object as? Box<[String: Bool]>)?.value else {
+            guard ((notification.object as? Box<[String: Bool]>)?.value) != nil else {
                 log.warning("Notification didn't have validations.")
                 return
             }
@@ -651,35 +651,35 @@ public class BrowserProfile: Profile {
             self.prefs.setInt(attempt + 1, forKey: "bookmarkvalidationattempt")
 
             // Capture the buffer count ASAP, not in the delayed op, because the merge could wipe it!
-            let bufferRows = (self.profile.bookmarks as? MergedSQLiteBookmarks)?.synchronousBufferCount()
+//            let bufferRows = (self.profile.bookmarks as? MergedSQLiteBookmarks)?.synchronousBufferCount()
 
-            self.doInBackgroundAfter(millis: 300) {
-                self.profile.remoteClientsAndTabs.getClientGUIDs() >>== { clients in
-                    // We would love to include the version and OS etc. of each remote client,
-                    // but we don't store that information. For now, just do a count.
-                    let clientCount = clients.count
-
-                    let id = DeviceInfo.clientIdentifier(self.prefs)
-                    let ping = makeAdHocBookmarkMergePing(NSBundle.mainBundle(), clientID: id, attempt: attempt, bufferRows: bufferRows, valid: validations, clientCount: clientCount)
-                    let payload = ping.toString()
-
-                    log.debug("Payload is: \(payload)")
-                    guard let body = payload.dataUsingEncoding(NSUTF8StringEncoding) else {
-                        log.debug("Invalid JSON!")
-                        return
-                    }
-
-                    let url = "https://mozilla-anonymous-sync-metrics.moo.mx/post/bookmarkvalidation".asURL!
-                    let request = NSMutableURLRequest(URL: url)
-                    request.HTTPMethod = "POST"
-                    request.HTTPBody = body
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-                    Alamofire.Manager.sharedInstance.request(request).response { (request, response, data, error) in
-                        log.debug("Bookmark validation upload response: \(response?.statusCode ?? -1).")
-                    }
-                }
-            }
+//            self.doInBackgroundAfter(millis: 300) {
+//                self.profile.remoteClientsAndTabs.getClientGUIDs() >>== { clients in
+//                    // We would love to include the version and OS etc. of each remote client,
+//                    // but we don't store that information. For now, just do a count.
+//                    let clientCount = clients.count
+//
+//                    let id = DeviceInfo.clientIdentifier(self.prefs)
+//                    let ping = makeAdHocBookmarkMergePing(NSBundle.mainBundle(), clientID: id, attempt: attempt, bufferRows: bufferRows, valid: validations, clientCount: clientCount)
+//                    let payload = ping.toString()
+//
+//                    log.debug("Payload is: \(payload)")
+//                    guard let body = payload.dataUsingEncoding(NSUTF8StringEncoding) else {
+//                        log.debug("Invalid JSON!")
+//                        return
+//                    }
+//
+//                    let url = "https://mozilla-anonymous-sync-metrics.moo.mx/post/bookmarkvalidation".asURL!
+//                    let request = NSMutableURLRequest(URL: url)
+//                    request.HTTPMethod = "POST"
+//                    request.HTTPBody = body
+//                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+//
+//                    Alamofire.Manager.sharedInstance.request(request).response { (request, response, data, error) in
+//                        log.debug("Bookmark validation upload response: \(response?.statusCode ?? -1).")
+//                    }
+//                }
+//            }
         }
 
         deinit {

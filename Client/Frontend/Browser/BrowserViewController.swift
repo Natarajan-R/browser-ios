@@ -100,7 +100,8 @@ class BrowserViewController: UIViewController {
         super.init(nibName: nil, bundle: nil)
         didInit()
 
-        assert(++BrowserViewController.instanceAsserter == 1)
+        BrowserViewController.instanceAsserter += 1
+        assert(BrowserViewController.instanceAsserter == 1)
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -847,7 +848,7 @@ class BrowserViewController: UIViewController {
         })
     }
 
-    private func removeBookmark(url: String) {
+    func removeBookmark(url: String) {
         profile.bookmarks.modelFactory >>== {
             $0.removeByURL(url).uponQueue(dispatch_get_main_queue()) { res in
                 if res.isSuccess {
@@ -896,9 +897,9 @@ class BrowserViewController: UIViewController {
             guard let loading = change?[NSKeyValueChangeNewKey] as? Bool else { break }
             toolbar?.updateReloadStatus(loading)
             urlBar.updateReloadStatus(loading)
-            if (!loading) {
-                runScriptsOnWebView(webView)
-            }
+//            if (!loading) {
+//                runScriptsOnWebView(webView)
+//            }
         case KVOURL:
             if let tab = tabManager.selectedTab where tab.webView?.URL == nil {
                 log.debug("URL is nil!")
@@ -918,10 +919,10 @@ class BrowserViewController: UIViewController {
         }
     }
 
-    private func runScriptsOnWebView(webView: WKWebView) {
-        webView.evaluateJavaScript("__firefox__.favicons.getFavicons()", completionHandler:nil)
-    }
-    
+//    private func runScriptsOnWebView(webView: WKWebView) {
+//        webView.evaluateJavaScript("__firefox__.favicons.getFavicons()", completionHandler:nil)
+//    }
+
     private func updateUIForReaderHomeStateForTab(tab: Browser) {
 #if BRAVE
         updateURLBarDisplayURL(tab)
@@ -1820,7 +1821,7 @@ extension BrowserViewController: TabManagerDelegate {
         updateTabCountUsingTabManager(tabManager)
     }
 
-    private func updateTabCountUsingTabManager(tabManager: TabManager, animated: Bool = true) {
+    func updateTabCountUsingTabManager(tabManager: TabManager, animated: Bool = true) {
         if let selectedTab = tabManager.selectedTab {
             let count = selectedTab.isPrivate ? tabManager.privateTabs.count : tabManager.normalTabs.count
             urlBar.updateTabCount(max(count, 1), animated: animated)
@@ -1922,13 +1923,14 @@ extension BrowserViewController: WKNavigationDelegate {
 
         // This is the normal case, opening a http or https url, which we handle by loading them in this WKWebView. We
         // always allow this.
-
         if url.scheme == "http" || url.scheme == "https" {
-            if navigationAction.navigationType == .LinkActivated {
+            #if !BRAVE
+                if navigationAction.navigationType == .LinkActivated {
                 resetSpoofedUserAgentIfRequired(webView, newURL: url)
             } else if navigationAction.navigationType == .BackForward {
                 restoreSpoofedUserAgentIfRequired(webView, newRequest: navigationAction.request)
             }
+            #endif
             decisionHandler(WKNavigationActionPolicy.Allow)
             return
         }
@@ -1941,43 +1943,42 @@ extension BrowserViewController: WKNavigationDelegate {
         decisionHandler(WKNavigationActionPolicy.Cancel)
     }
 
-    func webView(webView: WKWebView, didReceiveAuthenticationChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
-
-        // If this is a certificate challenge, see if the certificate has previously been
-        // accepted by the user.
-        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-           let trust = challenge.protectionSpace.serverTrust,
-           let cert = SecTrustGetCertificateAtIndex(trust, 0) where profile.certStore.containsCertificate(cert) {
-            completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: trust))
-            return
-        }
-
-        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic ||
-              challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPDigest ||
-              challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodNTLM,
-              let tab = tabManager[webView] else {
-            completionHandler(NSURLSessionAuthChallengeDisposition.PerformDefaultHandling, nil)
-            return
-        }
-
-        // The challenge may come from a background tab, so ensure it's the one visible.
-        tabManager.selectTab(tab)
-
-        let loginsHelper = tab.getHelper(name: LoginsHelper.name()) as? LoginsHelper
-        Authenticator.handleAuthRequest(self, challenge: challenge, loginsHelper: loginsHelper).uponQueue(dispatch_get_main_queue()) { res in
-            if let credentials = res.successValue {
-                completionHandler(.UseCredential, credentials.credentials)
-            } else {
-                completionHandler(NSURLSessionAuthChallengeDisposition.RejectProtectionSpace, nil)
-            }
-        }
-      #endif
-    }
+//    func webView(webView: WKWebView, didReceiveAuthenticationChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
+//
+//        // If this is a certificate challenge, see if the certificate has previously been
+//        // accepted by the user.
+//        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+//           let trust = challenge.protectionSpace.serverTrust,
+//           let cert = SecTrustGetCertificateAtIndex(trust, 0) where profile.certStore.containsCertificate(cert) {
+//            completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: trust))
+//            return
+//        }
+//
+//        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic ||
+//              challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPDigest ||
+//              challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodNTLM,
+//              let tab = tabManager.tabForWebView(webView) else {
+//            completionHandler(NSURLSessionAuthChallengeDisposition.PerformDefaultHandling, nil)
+//            return
+//        }
+//
+//        // The challenge may come from a background tab, so ensure it's the one visible.
+//        tabManager.selectTab(tab)
+//
+//        let loginsHelper = tab.getHelper(name: LoginsHelper.name()) as? LoginsHelper
+//        Authenticator.handleAuthRequest(self, challenge: challenge, loginsHelper: loginsHelper).uponQueue(dispatch_get_main_queue()) { res in
+//            if let credentials = res.successValue {
+//                completionHandler(.UseCredential, credentials.credentials)
+//            } else {
+//                completionHandler(NSURLSessionAuthChallengeDisposition.RejectProtectionSpace, nil)
+//            }
+//        }
+//    }
 
     func webView(_webView: WKWebView, didFinishNavigation navigation: WKNavigation!) {
         guard let container = _webView as? ContainerWebView else { return }
         guard let webView = container.legacyWebView else { return }
-        guard let tab = tabManager[webView ] else { return }
+        guard let tab = tabManager.tabForWebView(webView) else { return }
       
         tabManager.expireSnackbars()
 
@@ -2150,7 +2151,7 @@ extension BrowserViewController: WKUIDelegate {
         if error.code == Int(CFNetworkErrors.CFURLErrorCancelled.rawValue) {
             guard let container = webView as? ContainerWebView else { return }
             guard let legacyWebView = container.legacyWebView else { return }
-            if let browser = tabManager[legacyWebView] where browser === tabManager.selectedTab {
+            if let browser = tabManager.tabForWebView(legacyWebView) where browser === tabManager.selectedTab {
                 urlBar.currentURL = browser.displayURL
             }
             return

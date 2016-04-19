@@ -43,7 +43,7 @@ class BraveContextMenu {
                 tapLocation = touch.locationInView(window)
                 resetTimer()
                 // This timer repeats in order to run twice. See tapAndHoldAction() for comments.
-                contextualMenuTimer = NSTimer.scheduledTimerWithTimeInterval(0.25, target: self, selector: "tapAndHoldAction", userInfo: nil, repeats: true)
+                contextualMenuTimer = NSTimer.scheduledTimerWithTimeInterval(0.25, target: self, selector: #selector(BraveContextMenu.tapAndHoldAction), userInfo: nil, repeats: true)
                 break
             case .Moved, .Stationary:
                 let p1 = touch.locationInView(window)

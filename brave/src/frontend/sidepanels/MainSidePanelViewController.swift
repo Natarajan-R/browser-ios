@@ -65,11 +65,11 @@ class MainSidePanelViewController : SidePanelBaseViewController {
         settingsButton.accessibilityLabel = NSLocalizedString("Settings", comment: "Accessibility label for the Settings button.")
 
         bookmarksButton.setImage(UIImage(named: "bookmarklist"), forState: .Normal)
-        bookmarksButton.addTarget(self, action: "showBookmarks", forControlEvents: .TouchUpInside)
+        bookmarksButton.addTarget(self, action: #selector(MainSidePanelViewController.showBookmarks), forControlEvents: .TouchUpInside)
         bookmarksButton.accessibilityLabel = NSLocalizedString("Show Bookmarks", comment: "Button to show the bookmarks list")
 
         historyButton.setImage(UIImage(named: "history"), forState: .Normal)
-        historyButton.addTarget(self, action: "showHistory", forControlEvents: .TouchUpInside)
+        historyButton.addTarget(self, action: #selector(MainSidePanelViewController.showHistory), forControlEvents: .TouchUpInside)
         historyButton.accessibilityLabel = NSLocalizedString("Show History", comment: "Button to show the history list")
 
         addBookmarkButton.addTarget(self, action: NSSelectorFromString(SEL_onClickBookmarksButton), forControlEvents: .TouchUpInside)
