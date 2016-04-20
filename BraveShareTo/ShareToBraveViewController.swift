@@ -37,8 +37,8 @@ class ShareToBraveViewController: SLComposeServiceViewController {
                 // From http://stackoverflow.com/questions/24297273/openurl-not-work-in-action-extension
                 var responder = self as UIResponder?
                 while (responder != nil) {
-                    if responder!.respondsToSelector(Selector("openURL:")) {
-                        responder!.callSelector(Selector("openURL:"), object: braveUrl, delay: 0)
+                    if responder!.respondsToSelector(#selector(UIApplication.openURL(_:))) {
+                        responder!.callSelector(#selector(UIApplication.openURL(_:)), object: braveUrl, delay: 0)
                     }
                     responder = responder!.nextResponder()
                 }

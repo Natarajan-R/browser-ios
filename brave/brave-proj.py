@@ -80,14 +80,14 @@ def modpbxproj():
                     if b['isa'] == 'PBXBuildFile':
                         add_build_file_to_target(b, 'ClientTests')
 
-    target_config_list = project.get_target_by_name('ClientTests').get('buildConfigurationList')
-    configs = project.objects.data[target_config_list].data['buildConfigurations'].data
-    for config_id in configs:
-        config = project.objects.data[config_id]
-        settings = config.data['buildSettings'].data
-        settings['OTHER_SWIFT_FLAGS'] = '-D TEST -D BRAVE -D DEBUG'
-        if not fabric_keys:
-            settings['OTHER_SWIFT_FLAGS'] += " -D NO_FABRIC"
+    # target_config_list = project.get_target_by_name('ClientTests').get('buildConfigurationList')
+    # configs = project.objects.data[target_config_list].data['buildConfigurations'].data
+    # for config_id in configs:
+    #     config = project.objects.data[config_id]
+    #     settings = config.data['buildSettings'].data
+        # settings['OTHER_SWIFT_FLAGS'] = '-D TEST -D BRAVE -D DEBUG'
+        # if not fabric_keys:
+        #     settings['OTHER_SWIFT_FLAGS'] += " -D NO_FABRIC"
 
     group = project.get_or_create_group('abp-filter-parser-cpp', path='brave/node_modules/abp-filter-parser-cpp', parent=topgroup)
     for f in ['ABPFilterParser.h', 'ABPFilterParser.cpp', 'filter.cpp',
@@ -101,7 +101,6 @@ def modpbxproj():
     for f in ['FirstPartyHost.h', 'TPParser.h', 'TPParser.cpp']:
         project.add_file(f, parent=group, tree="<group>", target='Client', ignore_unknown_type=True)
 
-
     arr = project.root_group.data['children'].data
     arr.insert(0, arr.pop())
 
@@ -109,16 +108,16 @@ def modpbxproj():
         project.add_file('Fabric.framework', target='Client')
         project.add_file('Crashlytics.framework', target='Client')
 
-    configs = [p for p in project.objects.values() if p.get('isa') == 'XCBuildConfiguration']
-    for i in configs:
-        build_settings = i.data['buildSettings']
-        if 'PRODUCT_BUNDLE_IDENTIFIER' in build_settings:
-            if 'PRODUCT_NAME' in build_settings and 'Client' in build_settings['PRODUCT_NAME']:
-                build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = bundle_id
-            else:
-                build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = bundle_id + '.$(PRODUCT_NAME)'
-        elif 'INFOPLIST_FILE' in build_settings:
-            build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = bundle_id + '.$(PRODUCT_NAME)'
+    # configs = [p for p in project.objects.values() if p.get('isa') == 'XCBuildConfiguration']
+    # for i in configs:
+    #     build_settings = i.data['buildSettings']
+    #     if 'PRODUCT_BUNDLE_IDENTIFIER' in build_settings:
+    #         if 'PRODUCT_NAME' in build_settings and 'Client' in build_settings['PRODUCT_NAME']:
+    #             build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = bundle_id
+    #         else:
+    #             build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = bundle_id + '.$(PRODUCT_NAME)'
+    #     elif 'INFOPLIST_FILE' in build_settings:
+    #         build_settings['PRODUCT_BUNDLE_IDENTIFIER'] = bundle_id + '.$(PRODUCT_NAME)'
     project.save()
 
 # Do manual removal/replacement in cases where it is easy to do without mod_pbxproj
@@ -197,7 +196,7 @@ def create_build_num_increment_step():
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Run Script"
-               scriptText = "conf=${CONFIGURATION}&#10;if [ $conf == &quot;Firefox&quot; ]&#10;then&#10;say &apos;Build pre-action: incrementing build number&apos; &amp;&#10;echo GENERATED_BUILD_ID=`date +&quot;%y.%m.%d.%H&quot;` &gt; ${PROJECT_DIR}/Client/Configuration/build-id.xcconfig&#10;fi">
+               scriptText = "conf=${CONFIGURATION}&#10;if [ $conf == &quot;Firefox&quot; ]&#10;then&#10;say &apos;Build pre-action: incrementing build number&apos; &amp;&#10;echo GENERATED_BUILD_ID=`date +&quot;%y.%m.%d.%H&quot;` &gt; ${PROJECT_DIR}/brave/xcconfig/build-id.xcconfig&#10;fi">
             </ActionContent>
          </ExecutionAction>
       </PreActions>
