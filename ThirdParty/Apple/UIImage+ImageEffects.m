@@ -149,6 +149,25 @@
 }
 
 
+- (BOOL)imageIsPossiblyEmpty {
+    CGImageRef imageRef = self.CGImage;
+    NSData *data = (NSData *) CFBridgingRelease(CGDataProviderCopyData(CGImageGetDataProvider(imageRef)));
+    unsigned char *pixels = (unsigned char *)[data bytes];
+    int diff = 0;
+    int prev = -1;
+    for(int i = 0; i < [data length]; i += 4) {
+        int curr = pixels[i] + pixels[i+1] + pixels[i+2];
+        if (prev > -1 && prev != curr) {
+            diff++;
+            if (diff > 1000) {
+                return NO;
+            }
+        }
+        prev = curr;
+    }
+    return YES;
+}
+
 - (UIImage *)applyBlurWithRadius:(CGFloat)blurRadius blurType: (BlurType) blurType tintColor:(UIColor *)tintColor saturationDeltaFactor:(CGFloat)saturationDeltaFactor maskImage:(UIImage *)maskImage
 {
     // Check pre-conditions.

@@ -104,6 +104,7 @@ typedef enum {
 
 @interface UIImage (ImageEffects)
 
+- (BOOL)imageIsPossiblyEmpty;
 - (UIImage *) applyLightEffect;
 - (UIImage *) applyExtraLightEffect;
 - (UIImage *) applyDarkEffect;

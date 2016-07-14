@@ -6,7 +6,7 @@ import Foundation
 import WebKit
 import Storage
 import Shared
-
+import ImageIO
 import XCGLogger
 
 private let log = Logger.browserLogger
@@ -469,6 +469,15 @@ class Browser: NSObject, BrowserWebViewDelegate {
         }
 #endif
         guard let screenshot = screenshot else { return }
+
+        let options: [NSString: NSObject] = [
+            kCGImageSourceThumbnailMaxPixelSize: max(screenshot.size.width, screenshot.size.height) / 4.0,
+            kCGImageSourceCreateThumbnailFromImageAlways: true
+        ]
+        let imageData = UIImageJPEGRepresentation(screenshot, 0.5)
+        let source = CGImageSourceCreateWithData(imageData!, nil)
+        let scaledImage = CGImageSourceCreateThumbnailAtIndex(source!, 0, options).flatMap { UIImage(CGImage: $0) }
+        print(scaledImage!.imageIsPossiblyEmpty())
 
         self.screenshot.image = screenshot
         if revUUID {
