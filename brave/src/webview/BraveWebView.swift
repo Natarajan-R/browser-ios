@@ -87,7 +87,7 @@ class BraveWebView: UIWebView {
     var delegatesForPageState = [Weak_WebPageStateDelegate]()
 
     let specialStopLoadUrl = "http://localhost.stop.load"
-    weak var navigationDelegate: WKNavigationDelegate?
+    weak var navigationDelegate: WKCompatNavigationDelegate?
     weak var UIDelegate: WKUIDelegate?
     lazy var configuration: BraveWebViewConfiguration = { return BraveWebViewConfiguration(webView: self) }()
     lazy var backForwardList: WebViewBackForwardList = { return WebViewBackForwardList(webView: self) } ()
@@ -401,7 +401,7 @@ class BraveWebView: UIWebView {
                 #endif
                 if let nd = me.navigationDelegate {
                     BraveWebView.containerWebViewForCallbacks.legacyWebView = me
-                    nd.webView?(BraveWebView.containerWebViewForCallbacks, didFinishNavigation: nullWKNavigation)
+                    nd.webViewDidFinishNavigation(me, url: me.URL)
                 }
             }
             me.prevDocumentLocation = docLoc
@@ -666,16 +666,12 @@ extension BraveWebView: UIWebViewDelegate {
             return false
         }
 
-        var result = true
         if let nd = navigationDelegate {
-            let action:LegacyNavigationAction =
-                LegacyNavigationAction(type: convertNavActionToWKType(navigationType), request: request)
-
-            globalContainerWebView.legacyWebView = self
-            nd.webView?(globalContainerWebView, decidePolicyForNavigationAction: action,
-                        decisionHandler: { (policy:WKNavigationActionPolicy) -> Void in
-                            result = policy == .Allow
-            })
+            var shouldLoad = true
+            nd.webViewDecidePolicyForNavigationAction(self, url: url, shouldLoad: &shouldLoad)
+            if !shouldLoad {
+                return false
+            }
         }
 
         if url.scheme.startsWith("itms") || url.host == "itunes.apple.com" {
@@ -702,7 +698,7 @@ extension BraveWebView: UIWebViewDelegate {
 
         broadcastToPageStateDelegates()
 
-        return result
+        return true
     }
 
 
@@ -712,7 +708,7 @@ extension BraveWebView: UIWebViewDelegate {
         if let nd = navigationDelegate {
             // this triggers the network activity spinner
             globalContainerWebView.legacyWebView = self
-            nd.webView?(globalContainerWebView, didStartProvisionalNavigation: nullWKNavigation)
+            nd.webViewDidStartProvisionalNavigation(self, url: URL)
         }
         progress?.webViewDidStartLoad()
 
@@ -804,8 +800,7 @@ extension BraveWebView: UIWebViewDelegate {
             if !handled && URL?.absoluteString == errorUrl.absoluteString {
                 if let nd = navigationDelegate {
                     globalContainerWebView.legacyWebView = self
-                    nd.webView?(globalContainerWebView, didFailNavigation: nullWKNavigation,
-                                withError: error ?? NSError.init(domain: "", code: 0, userInfo: nil))
+                    nd.webViewDidFailNavigation(self, withError: error ?? NSError.init(domain: "", code: 0, userInfo: nil))
                 }
             }
         }

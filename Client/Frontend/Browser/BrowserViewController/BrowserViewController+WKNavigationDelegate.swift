@@ -3,8 +3,9 @@
 import Shared
 private let log = Logger.browserLogger
 
-extension BrowserViewController: WKNavigationDelegate {
-    func webView(webView: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
+extension BrowserViewController: WKCompatNavigationDelegate {
+
+    func webViewDidStartProvisionalNavigation(webView: UIWebView, url: NSURL?) {
         #if !BRAVE
             if tabManager.selectedTab?.webView !== webView {
                 return
@@ -18,7 +19,7 @@ extension BrowserViewController: WKNavigationDelegate {
         // If we are going to navigate to a new page, hide the reader mode button. Unless we
         // are going to a about:reader page. Then we keep it on screen: it will change status
         // (orange color) as soon as the page has loaded.
-        if let url = webView.URL {
+        if let url = tabManager.tabForWebView(webView)?.url {
             if !ReaderModeUtils.isReaderModeURL(url) {
                 urlBar.updateReaderModeState(ReaderModeState.Unavailable)
                 hideReaderModeBar(animated: false)
@@ -54,16 +55,10 @@ extension BrowserViewController: WKNavigationDelegate {
     // This is the place where we decide what to do with a new navigation action. There are a number of special schemes
     // and http(s) urls that need to be handled in a different way. All the logic for that is inside this delegate
     // method.
-
-    func webView(webView: WKWebView, decidePolicyForNavigationAction navigationAction: WKNavigationAction, decisionHandler: (WKNavigationActionPolicy) -> Void) {
-        guard let url = navigationAction.request.URL else {
-            decisionHandler(WKNavigationActionPolicy.Cancel)
-            return
-        }
-
+    func webViewDecidePolicyForNavigationAction(webView: UIWebView, url: NSURL?, inout shouldLoad: Bool) {
+        guard let url = url else { return }
         // Fixes 1261457 - Rich text editor fails because requests to about:blank are blocked
         if url.scheme == "about" && url.resourceSpecifier == "blank" {
-            decisionHandler(WKNavigationActionPolicy.Allow)
             return
         }
 
@@ -80,7 +75,7 @@ extension BrowserViewController: WKNavigationDelegate {
                 }))
                 presentViewController(alert, animated: true, completion: nil)
             }
-            decisionHandler(WKNavigationActionPolicy.Cancel)
+            shouldLoad = false
             return
         }
 
@@ -90,7 +85,7 @@ extension BrowserViewController: WKNavigationDelegate {
 
         if isAppleMapsURL(url) {
             UIApplication.sharedApplication().openURL(url)
-            decisionHandler(WKNavigationActionPolicy.Cancel)
+            shouldLoad = false
             return
         }
 
@@ -132,7 +127,6 @@ extension BrowserViewController: WKNavigationDelegate {
                     restoreSpoofedUserAgentIfRequired(webView, newRequest: navigationAction.request)
                 }
             #endif
-            decisionHandler(WKNavigationActionPolicy.Allow)
             return
         }
 
@@ -141,56 +135,17 @@ extension BrowserViewController: WKNavigationDelegate {
         // every time. There is no way around this prompt. (TODO Confirm this is true by adding them to the Info.plist)
 
         UIApplication.sharedApplication().openURL(url)
-        decisionHandler(WKNavigationActionPolicy.Cancel)
+        shouldLoad = false
     }
 
-    //    func webView(webView: WKWebView, didReceiveAuthenticationChallenge challenge: NSURLAuthenticationChallenge, completionHandler: (NSURLSessionAuthChallengeDisposition, NSURLCredential?) -> Void) {
-    //
-    //        // If this is a certificate challenge, see if the certificate has previously been
-    //        // accepted by the user.
-    //        if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-    //           let trust = challenge.protectionSpace.serverTrust,
-    //           let cert = SecTrustGetCertificateAtIndex(trust, 0) where profile.certStore.containsCertificate(cert) {
-    //            completionHandler(NSURLSessionAuthChallengeDisposition.UseCredential, NSURLCredential(forTrust: trust))
-    //            return
-    //        }
-    //
-    //        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPBasic ||
-    //              challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodHTTPDigest ||
-    //              challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodNTLM,
-    //              let tab = tabManager.tabForWebView(webView) else {
-    //            completionHandler(NSURLSessionAuthChallengeDisposition.PerformDefaultHandling, nil)
-    //            return
-    //        }
-    //
-    //        // The challenge may come from a background tab, so ensure it's the one visible.
-    //        tabManager.selectTab(tab)
-    //
-    //        let loginsHelper = tab.getHelper(name: LoginsHelper.name()) as? LoginsHelper
-    //        Authenticator.handleAuthRequest(self, challenge: challenge, loginsHelper: loginsHelper).uponQueue(dispatch_get_main_queue()) { res in
-    //            if let credentials = res.successValue {
-    //                completionHandler(.UseCredential, credentials.credentials)
-    //            } else {
-    //                completionHandler(NSURLSessionAuthChallengeDisposition.RejectProtectionSpace, nil)
-    //            }
-    //        }
-    //    }
-
-    func webView(_webView: WKWebView, didFinishNavigation navigation: WKNavigation!) {
-        guard let container = _webView as? ContainerWebView else { return }
-        guard let webView = container.legacyWebView else { return }
+    func webViewDidFinishNavigation(webView: UIWebView, url: NSURL?) {
         guard let tab = tabManager.tabForWebView(webView) else { return }
-
         tabManager.expireSnackbars()
-
         tab.lastExecutedTime = NSDate.now()
 
-        if let url = webView.URL where !ErrorPageHelper.isErrorPageURL(url) && !AboutUtils.isAboutHomeURL(url) {
-            if navigation == nil {
-                log.warning("Implicitly unwrapped optional navigation was nil.")
-            }
+        if let url = url where !ErrorPageHelper.isErrorPageURL(url) && !AboutUtils.isAboutHomeURL(url) {
 
-            updateProfileForLocationChange(tab, navigation: navigation)
+            updateProfileForLocationChange(tab)
 
             // Fire the readability check. This is here and not in the pageShow event handler in ReaderMode.js anymore
             // because that event wil not always fire due to unreliable page caching. This will either let us know that
@@ -213,12 +168,7 @@ extension BrowserViewController: WKNavigationDelegate {
         #if BRAVE
             screenshotHelper.takeDelayedScreenshot(tab)
         #endif
-        addOpenInViewIfNeccessary(webView.URL)
-
-        // Remember whether or not a desktop site was requested
-        if #available(iOS 9.0, *) {
-            tab.desktopSite = webView.customUserAgent?.isEmpty == false
-        }
+        addOpenInViewIfNeccessary(tab.url)
     }
 
     func addOpenInViewIfNeccessary(url: NSURL?) {
@@ -246,13 +196,11 @@ extension BrowserViewController: WKNavigationDelegate {
         self.openInHelper = nil
     }
 
-    private func updateProfileForLocationChange(tab: Browser, navigation: WKNavigation?) {
+    private func updateProfileForLocationChange(tab: Browser) {
         var info = [String : AnyObject]()
         info["url"] = tab.displayURL
         info["title"] = tab.title
-        if let visitType = self.getVisitTypeForTab(tab, navigation: navigation)?.rawValue {
-            info["visitType"] = visitType
-        }
+        info["visitType"] = 1 // VisitType.Link
         info["isPrivate"] = tab.isPrivate
         if !(tab.title?.isEmpty ?? true) {
             (profile as? BrowserProfile)?.onLocationChange(info)
@@ -260,7 +208,7 @@ extension BrowserViewController: WKNavigationDelegate {
     }
 
 
-    func webView(webView: WKWebView, didFailNavigation navigation: WKNavigation!, withError error: NSError) {
+    func webViewDidFailNavigation(webView: UIWebView, withError error: NSError) {
         // Ignore the "Frame load interrupted" error that is triggered when we cancel a request
         // to open an external application and hand it over to UIApplication.openURL(). The result
         // will be that we switch to the external app, for example the app store, while keeping the
@@ -268,17 +216,16 @@ extension BrowserViewController: WKNavigationDelegate {
         if error.domain == "WebKitErrorDomain" && error.code == 102 {
             return
         }
-        guard let uiwebview = (webView as? ContainerWebView)?.legacyWebView else { assert(false) ; return }
 
         if error.code == Int(CFNetworkErrors.CFURLErrorCancelled.rawValue) {
-            if let tab = tabManager.tabForWebView(uiwebview) where tab === tabManager.selectedTab {
+            if let tab = tabManager.tabForWebView(webView) where tab === tabManager.selectedTab {
                 urlBar.currentURL = tab.displayURL
             }
             return
         }
 
         if let url = error.userInfo[NSURLErrorFailingURLErrorKey] as? NSURL {
-            ErrorPageHelper().showPage(error, forUrl: url, inWebView: uiwebview)
+            ErrorPageHelper().showPage(error, forUrl: url, inWebView: webView)
         }
     }
 

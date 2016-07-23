@@ -148,7 +148,7 @@ class Browser: NSObject, BrowserWebViewDelegate {
         return nil
     }
 
-    weak var navigationDelegate: WKNavigationDelegate? {
+    weak var navigationDelegate: WKCompatNavigationDelegate? {
         didSet {
             if let webView = webView {
                 webView.navigationDelegate = navigationDelegate

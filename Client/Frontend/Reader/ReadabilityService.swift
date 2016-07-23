@@ -41,7 +41,7 @@ class ReadabilityOperation: NSOperation, WKNavigationDelegate, ReadabilityBrowse
             let configuration = WKWebViewConfiguration()
             self.browser = Browser(configuration: configuration)
             self.browser.createWebview()
-            self.browser.navigationDelegate = self
+           /// self.browser.navigationDelegate = self
 
             if let readabilityBrowserHelper = ReadabilityBrowserHelper(browser: self.browser) {
                 readabilityBrowserHelper.delegate = self

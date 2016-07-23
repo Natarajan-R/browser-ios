@@ -125,16 +125,4 @@ extension BrowserViewController: WKUIDelegate {
 
         return false
     }
-
-    func webView(webView: WKWebView, decidePolicyForNavigationResponse navigationResponse: WKNavigationResponse, decisionHandler: (WKNavigationResponsePolicy) -> Void) {
-        if navigationResponse.canShowMIMEType {
-            decisionHandler(WKNavigationResponsePolicy.Allow)
-            return
-        }
-
-        let error = NSError(domain: ErrorPageHelper.MozDomain, code: Int(ErrorPageHelper.MozErrorDownloadsNotEnabled), userInfo: [NSLocalizedDescriptionKey: "Downloads aren't supported in Brave yet (but we're working on it)."])
-        guard let uiwebview = (webView as? ContainerWebView)?.legacyWebView else { assert(false) ; return }
-        ErrorPageHelper().showPage(error, forUrl: navigationResponse.response.URL!, inWebView: uiwebview)
-        decisionHandler(WKNavigationResponsePolicy.Allow)
-    }
 }

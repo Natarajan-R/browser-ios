@@ -131,7 +131,7 @@ class TabManager : NSObject {
         NSNotificationCenter.defaultCenter().removeObserver(self)
     }
 
-    func addNavigationDelegate(delegate: WKNavigationDelegate) {
+    func addNavigationDelegate(delegate: WKCompatNavigationDelegate) {
         debugNoteIfNotMainThread()
 
         self.navDelegate.insert(delegate)
@@ -769,8 +769,11 @@ extension TabManager {
     }
 }
 
-extension TabManager : WKNavigationDelegate {
-    func webView(_: WKWebView, didStartProvisionalNavigation _: WKNavigation!) {
+extension TabManager : WKCompatNavigationDelegate {
+
+    func webViewDecidePolicyForNavigationAction(webView: UIWebView, url: NSURL?, inout shouldLoad: Bool) {}
+
+    func webViewDidStartProvisionalNavigation(_: UIWebView, url: NSURL?) {
         UIApplication.sharedApplication().networkActivityIndicatorVisible = true
 
 #if BRAVE
@@ -787,23 +790,20 @@ extension TabManager : WKNavigationDelegate {
 #endif
     }
 
-    func webView(webView: WKWebView, didFinishNavigation _: WKNavigation!) {
+    func webViewDidFinishNavigation(webView: UIWebView, url: NSURL?) {
         hideNetworkActivitySpinner()
-
-        guard let container = webView as? ContainerWebView else { return }
-        guard let legacyWebView = container.legacyWebView else { return }
 
         // only store changes if this is not an error page
         // as we current handle tab restore as error page redirects then this ensures that we don't
         // call storeChanges unnecessarily on startup
-        if let url = legacyWebView.URL {
+        if let url = tabForWebView(webView)?.url {
             if !ErrorPageHelper.isErrorPageURL(url) {
                 storeChanges()
             }
         }
     }
 
-    func webView(_: WKWebView, didFailNavigation _: WKNavigation!, withError _: NSError) {
+    func webViewDidFailNavigation(_: UIWebView, withError _: NSError) {
         hideNetworkActivitySpinner()
     }
 
@@ -822,11 +822,11 @@ extension TabManager : WKNavigationDelegate {
     /// Called when the WKWebView's content process has gone away. If this happens for the currently selected tab
     /// then we immediately reload it.
 
-    func webViewWebContentProcessDidTerminate(webView: WKWebView) {
-        if let browser = selectedTab where browser.webView == webView {
-            webView.reload()
-        }
-    }
+//    func webViewWebContentProcessDidTerminate(webView: WKWebView) {
+//        if let browser = selectedTab where browser.webView == webView {
+//            webView.reload()
+//        }
+//    }
 }
 
 extension TabManager {
@@ -843,92 +843,97 @@ extension TabManager {
     }
 }
 
+
+protocol WKCompatNavigationDelegate : class {
+    func webViewDidFailNavigation(webView: UIWebView, withError error: NSError)
+    func webViewDidFinishNavigation(webView: UIWebView, url: NSURL?)
+    func webViewDidStartProvisionalNavigation(webView: UIWebView, url: NSURL?)
+    func webViewDecidePolicyForNavigationAction(webView: UIWebView, url: NSURL?, inout shouldLoad: Bool)
+}
+
 // WKNavigationDelegates must implement NSObjectProtocol
-class TabManagerNavDelegate : NSObject, WKNavigationDelegate {
-    private var delegates = WeakList<WKNavigationDelegate>()
+class TabManagerNavDelegate : WKCompatNavigationDelegate {
+    class Weak_WKCompatNavigationDelegate {     // We can't use a WeakList here because this is a protocol.
+        weak var value : WKCompatNavigationDelegate?
+        init (value: WKCompatNavigationDelegate) { self.value = value }
+    }
+    private var navDelegates = [Weak_WKCompatNavigationDelegate]()
 
-    func insert(delegate: WKNavigationDelegate) {
-        delegates.insert(delegate)
+    func insert(delegate: WKCompatNavigationDelegate) {
+        navDelegates.append(Weak_WKCompatNavigationDelegate(value: delegate))
     }
 
-    func webView(webView: WKWebView, didCommitNavigation navigation: WKNavigation!) {
-        for delegate in delegates {
-            delegate.webView?(webView, didCommitNavigation: navigation)
+//    func webView(webView: WKWebView, didCommitNavigation navigation: WKNavigation!) {
+//        for delegate in delegates {
+//            delegate.webView?(webView, didCommitNavigation: navigation)
+//        }
+//    }
+
+    func webViewDidFailNavigation(webView: UIWebView, withError error: NSError) {
+        for delegate in navDelegates {
+            delegate.value?.webViewDidFailNavigation(webView, withError: error)
         }
     }
 
-    func webView(webView: WKWebView, didFailNavigation navigation: WKNavigation!, withError error: NSError) {
-        for delegate in delegates {
-            delegate.webView?(webView, didFailNavigation: navigation, withError: error)
+//    func webView(webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
+//        withError error: NSError) {
+//            for delegate in delegates {
+//                delegate.webView?(webView, didFailProvisionalNavigation: navigation, withError: error)
+//            }
+//    }
+
+    func webViewDidFinishNavigation(webView: UIWebView, url: NSURL?) {
+        for delegate in navDelegates {
+            delegate.value?.webViewDidFinishNavigation(webView, url: url)
         }
     }
 
-    func webView(webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
-        withError error: NSError) {
-            for delegate in delegates {
-                delegate.webView?(webView, didFailProvisionalNavigation: navigation, withError: error)
-            }
-    }
+//    func webView(webView: WKWebView, didReceiveAuthenticationChallenge challenge: NSURLAuthenticationChallenge,
+//        completionHandler: (NSURLSessionAuthChallengeDisposition,
+//        NSURLCredential?) -> Void) {
+//            let authenticatingDelegates = delegates.filter {
+//                $0.respondsToSelector(#selector(WKNavigationDelegate.webView(_:didReceiveAuthenticationChallenge:completionHandler:)))
+//            }
+//
+//            guard let firstAuthenticatingDelegate = authenticatingDelegates.first else {
+//                return completionHandler(NSURLSessionAuthChallengeDisposition.PerformDefaultHandling, nil)
+//            }
+//
+//            firstAuthenticatingDelegate.webView?(webView, didReceiveAuthenticationChallenge: challenge) { (disposition, credential) in
+//                completionHandler(disposition, credential)
+//            }
+//    }
 
-    func webView(webView: WKWebView, didFinishNavigation navigation: WKNavigation!) {
-        for delegate in delegates {
-            delegate.webView?(webView, didFinishNavigation: navigation)
+//    func webView(webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+//        for delegate in delegates {
+//            delegate.webView?(webView, didReceiveServerRedirectForProvisionalNavigation: navigation)
+//        }
+//    }
+
+    func webViewDidStartProvisionalNavigation(webView: UIWebView, url: NSURL?) {
+        for delegate in navDelegates {
+            delegate.value?.webViewDidStartProvisionalNavigation(webView, url: url)
         }
     }
 
-    func webView(webView: WKWebView, didReceiveAuthenticationChallenge challenge: NSURLAuthenticationChallenge,
-        completionHandler: (NSURLSessionAuthChallengeDisposition,
-        NSURLCredential?) -> Void) {
-            let authenticatingDelegates = delegates.filter {
-                $0.respondsToSelector(#selector(WKNavigationDelegate.webView(_:didReceiveAuthenticationChallenge:completionHandler:)))
-            }
-
-            guard let firstAuthenticatingDelegate = authenticatingDelegates.first else {
-                return completionHandler(NSURLSessionAuthChallengeDisposition.PerformDefaultHandling, nil)
-            }
-
-            firstAuthenticatingDelegate.webView?(webView, didReceiveAuthenticationChallenge: challenge) { (disposition, credential) in
-                completionHandler(disposition, credential)
-            }
-    }
-
-    func webView(webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
-        for delegate in delegates {
-            delegate.webView?(webView, didReceiveServerRedirectForProvisionalNavigation: navigation)
+    func webViewDecidePolicyForNavigationAction(webView: UIWebView, url: NSURL?, inout shouldLoad: Bool) {
+        for delegate in navDelegates {
+            delegate.value?.webViewDecidePolicyForNavigationAction(webView, url: url, shouldLoad: &shouldLoad)
         }
+
     }
 
-    func webView(webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        for delegate in delegates {
-            delegate.webView?(webView, didStartProvisionalNavigation: navigation)
-        }
-    }
-
-    func webView(webView: WKWebView, decidePolicyForNavigationAction navigationAction: WKNavigationAction,
-        decisionHandler: (WKNavigationActionPolicy) -> Void) {
-            var res = WKNavigationActionPolicy.Allow
-            for delegate in delegates {
-                delegate.webView?(webView, decidePolicyForNavigationAction: navigationAction, decisionHandler: { policy in
-                    if policy == .Cancel {
-                        res = policy
-                    }
-                })
-            }
-
-            decisionHandler(res)
-    }
-
-    func webView(webView: WKWebView, decidePolicyForNavigationResponse navigationResponse: WKNavigationResponse,
-        decisionHandler: (WKNavigationResponsePolicy) -> Void) {
-            var res = WKNavigationResponsePolicy.Allow
-            for delegate in delegates {
-                delegate.webView?(webView, decidePolicyForNavigationResponse: navigationResponse, decisionHandler: { policy in
-                    if policy == .Cancel {
-                        res = policy
-                    }
-                })
-            }
-
-            decisionHandler(res)
-    }
+//    func webView(webView: WKWebView, decidePolicyForNavigationResponse navigationResponse: WKNavigationResponse,
+//        decisionHandler: (WKNavigationResponsePolicy) -> Void) {
+//            var res = WKNavigationResponsePolicy.Allow
+//            for delegate in delegates {
+//                delegate.webView?(webView, decidePolicyForNavigationResponse: navigationResponse, decisionHandler: { policy in
+//                    if policy == .Cancel {
+//                        res = policy
+//                    }
+//                })
+//            }
+//
+//            decisionHandler(res)
+//    }
 }

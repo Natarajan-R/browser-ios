@@ -11,6 +11,7 @@ class HttpsEverywhere {
     var isNSPrefEnabled = true
     var db: Connection?
     let fifoCacheOfRedirects = FifoDict()
+    let fifoCacheOfDomainToIds = FifoDict()
 
     lazy var networkFileLoader: NetworkDataFileLoader = {
         let targetsDataUrl = NSURL(string: "https://s3.amazonaws.com/https-everywhere-data/\(dataVersion)/httpse.sqlite")!

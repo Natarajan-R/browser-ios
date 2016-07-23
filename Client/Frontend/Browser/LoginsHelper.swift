@@ -169,7 +169,9 @@ class LoginsHelper: BrowserHelper {
                 SnackButton(title: Strings.LoginsHelperSaveLoginButtonTitle, accessibilityIdentifier: "SaveLoginPrompt.saveLoginButton", callback: { (bar: SnackBar) -> Void in
                     self.browser?.removeSnackbar(bar)
                     self.snackBar = nil
-                    self.profile.logins.addLogin(login)
+                    succeed().upon { _ in // move off main thread
+                        self.profile.logins.addLogin(login)
+                    }
                 })
             ])
         browser?.addSnackbar(snackBar!)
