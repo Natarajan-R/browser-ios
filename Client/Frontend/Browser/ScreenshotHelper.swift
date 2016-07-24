@@ -31,9 +31,12 @@ class ScreenshotHelper {
                 // If webview is hidden, need to add it for screenshot.
                 let showForScreenshot = wv.superview == nil
                 if showForScreenshot {
+                    wv.frame = wv.convertRect(controller?.tabManager.selectedTab?.webView?.frame ?? CGRectZero, toView: nil)
+                    if wv.frame.height < 100 || wv.frame.width < 100 {
+                        return
+                    }
                     getApp().rootViewController.view.insertSubview(wv, atIndex: 0)
-                    wv.frame = controller?.tabManager.selectedTab?.webView?.frame ?? CGRectZero
-                    wv.frame = wv.convertRect(wv.frame, toView: nil)
+
                     delay(0.1) { [weak tab] in
                         screenshot = tab?.webView?.screenshot(offset: offset)
                         tab?.setScreenshot(screenshot)

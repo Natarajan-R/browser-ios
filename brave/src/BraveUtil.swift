@@ -16,7 +16,7 @@ func ensureMainThread(closure:()->()) {
     if NSThread.isMainThread() {
         closure()
     } else {
-        dispatch_sync(dispatch_get_main_queue(), closure)
+        dispatch_async(dispatch_get_main_queue(), closure)
     }
 }
 
