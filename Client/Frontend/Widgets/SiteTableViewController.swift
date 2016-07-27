@@ -5,6 +5,10 @@
 import UIKit
 import Storage
 
+public struct BookmarksNotifications {
+    public static let SwitchEditMode = "SwitchEditMode"
+}
+
 struct SiteTableViewControllerUX {
     static let HeaderHeight = CGFloat(25)
     static let RowHeight = CGFloat(58)
@@ -104,23 +108,47 @@ class SiteTableViewController: UIViewController, UITableViewDelegate, UITableVie
         if #available(iOS 9, *) {
             tableView.cellLayoutMarginsFollowReadableWidth = false
         }
+        
 
         // Set an empty footer to prevent empty cells from appearing in the list.
         tableView.tableFooterView = UIView()
+        
+        
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(switchTableEditingMode), name: BookmarksNotifications.SwitchEditMode, object: nil)
+
     }
 
     deinit {
+        NSNotificationCenter.defaultCenter().removeObserver(self, name: BookmarksNotifications.SwitchEditMode, object: nil)
+
         // The view might outlive this view controller thanks to animations;
         // explicitly nil out its references to us to avoid crashes. Bug 1218826.
         tableView.dataSource = nil
+        
         tableView.delegate = nil
+        
+    }
+    
+   
+    func switchTableEditingMode() {
+        //unwoned self is generally unnecessary here since the block is not going to create retention loops,
+        //but useful to include considering UIViews may get deallocated unexpectedly
+        dispatch_async(dispatch_get_main_queue()) { [unowned self] in
+            self.tableView.editing = !self.tableView.editing
+        }
+
     }
 
     func reloadData() {
         if data.status != .Success {
             print("Err: \(data.statusMessage)", terminator: "\n")
         } else {
-            self.tableView.reloadData()
+            //ensure reloadData call is in main queue
+            //unwoned self is generally unnecessary here since the block is not going to create retention loops,
+            //but useful to include considering UIViews may get deallocated unexpectedly
+            dispatch_async(dispatch_get_main_queue()) { [unowned self] in
+                self.tableView.reloadData()
+            }
         }
     }
 
@@ -139,6 +167,15 @@ class SiteTableViewController: UIViewController, UITableViewDelegate, UITableVie
         cell.addGestureRecognizer(lp)
 
         return cell
+    }
+    
+    func tableView(tableView: UITableView, moveRowAtIndexPath sourceIndexPath: NSIndexPath, toIndexPath destinationIndexPath: NSIndexPath) {
+        // update your model
+    }
+    
+    func tableView(tableView: UITableView, canMoveRowAtIndexPath indexPath: NSIndexPath) -> Bool {
+        // Return NO if you do not want the item to be re-orderable.
+        return true
     }
 
     func tableView(tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {

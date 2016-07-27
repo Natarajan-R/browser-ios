@@ -15,6 +15,8 @@ class MainSidePanelViewController : SidePanelBaseViewController {
 
     let topButtonsView = UIView()
     let addBookmarkButton = UIButton()
+    
+    let editBookmarksButton = UIButton()
 
     let triangleView = UIImageView()
 
@@ -38,6 +40,7 @@ class MainSidePanelViewController : SidePanelBaseViewController {
         tabTitleViewContainer.addSubview(tabTitleView)
         topButtonsView.addSubview(triangleView)
         topButtonsView.addSubview(bookmarksButton)
+        topButtonsView.addSubview(editBookmarksButton)
         topButtonsView.addSubview(historyButton)
         topButtonsView.addSubview(addBookmarkButton)
         topButtonsView.addSubview(settingsButton)
@@ -53,6 +56,16 @@ class MainSidePanelViewController : SidePanelBaseViewController {
         settingsButton.addTarget(self, action: #selector(onClickSettingsButton), forControlEvents: .TouchUpInside)
         settingsButton.accessibilityLabel = NSLocalizedString("Settings", comment: "Accessibility label for the Settings button.")
 
+        
+//        editBookmarksButton.setTitle("Edit", forState: .Normal)
+        editBookmarksButton.accessibilityLabel = NSLocalizedString("Edit Bookmarks List", comment: "Accessibility label for the Edit Bookmarks List button")
+        let img = UIImage(named: "editBookmarks")
+        editBookmarksButton.setImage(img, forState: .Normal)
+        editBookmarksButton.addTarget(self, action: #selector(onEditBookmarksButton), forControlEvents: UIControlEvents.TouchUpInside)
+//        editButton.sizeToFit()
+        
+       
+        
         bookmarksButton.setImage(UIImage(named: "bookmarklist"), forState: .Normal)
         bookmarksButton.addTarget(self, action: #selector(MainSidePanelViewController.showBookmarks), forControlEvents: .TouchUpInside)
         bookmarksButton.accessibilityLabel = NSLocalizedString("Show Bookmarks", comment: "Button to show the bookmarks list")
@@ -66,6 +79,7 @@ class MainSidePanelViewController : SidePanelBaseViewController {
         addBookmarkButton.setImage(UIImage(named: "bookmarkMarked"), forState: .Selected)
         addBookmarkButton.accessibilityLabel = NSLocalizedString("Add Bookmark", comment: "Button to add a bookmark")
 
+        editBookmarksButton.tintColor = BraveUX.ActionButtonTintColor
         settingsButton.tintColor = BraveUX.ActionButtonTintColor
         bookmarksButton.tintColor = BraveUX.ActionButtonTintColor
         historyButton.tintColor = BraveUX.ActionButtonTintColor
@@ -89,6 +103,13 @@ class MainSidePanelViewController : SidePanelBaseViewController {
                 return
             }
             self.history.refresh()
+        }
+    }
+    
+    @objc func onEditBookmarksButton() {
+        NSNotificationCenter.defaultCenter().postNotificationName(BookmarksNotifications.SwitchEditMode, object: self)
+        dispatch_async(dispatch_get_main_queue()) { [unowned self] in
+            self.editBookmarksButton.selected = !self.editBookmarksButton.selected
         }
     }
 
@@ -144,7 +165,7 @@ class MainSidePanelViewController : SidePanelBaseViewController {
         settingsButton.snp_remakeConstraints {
             make in
             common(make)
-            make.centerX.equalTo(self.topButtonsView).multipliedBy(0.25)
+            make.centerX.equalTo(self.topButtonsView).multipliedBy(0.2)
         }
 
         divider.snp_remakeConstraints {
@@ -152,28 +173,35 @@ class MainSidePanelViewController : SidePanelBaseViewController {
             make.bottom.equalTo(self.topButtonsView).inset(8.0)
             make.height.equalTo(UIConstants.ToolbarHeight - 18.0)
             make.width.equalTo(2.0)
-            make.centerX.equalTo(self.topButtonsView).multipliedBy(0.5)
+            make.centerX.equalTo(self.topButtonsView).multipliedBy(0.4)
         }
 
         historyButton.snp_remakeConstraints {
             make in
             make.bottom.equalTo(self.topButtonsView)
             make.height.equalTo(UIConstants.ToolbarHeight)
-            make.centerX.equalTo(self.topButtonsView).multipliedBy(0.75)
+            make.centerX.equalTo(self.topButtonsView).multipliedBy(0.6)
         }
 
+        editBookmarksButton.snp_remakeConstraints {
+            make in
+            make.bottom.equalTo(self.topButtonsView)
+            make.height.equalTo(UIConstants.ToolbarHeight)
+            make.centerX.equalTo(self.topButtonsView).multipliedBy(0.95)
+        }
+        
         bookmarksButton.snp_remakeConstraints {
             make in
             make.bottom.equalTo(self.topButtonsView)
             make.height.equalTo(UIConstants.ToolbarHeight)
-            make.centerX.equalTo(self.topButtonsView).multipliedBy(1.25)
+            make.centerX.equalTo(self.topButtonsView).multipliedBy(1.3)
         }
 
         addBookmarkButton.snp_remakeConstraints {
             make in
             make.bottom.equalTo(self.topButtonsView)
             make.height.equalTo(UIConstants.ToolbarHeight)
-            make.centerX.equalTo(self.topButtonsView).multipliedBy(1.75)
+            make.centerX.equalTo(self.topButtonsView).multipliedBy(1.65)
         }
 
         tabTitleViewContainer.snp_remakeConstraints {
