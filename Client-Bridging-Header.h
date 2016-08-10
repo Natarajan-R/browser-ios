@@ -21,6 +21,7 @@
 #import "SwizzlingToHideSharePicker.h"
 #import "ODRefreshControl.h"
 #import "WebViewDocScale.h"
+#import "HttpsEverywhereCpp.h"
 #if FLEX_ON
 #import "FLEXManager.h"
 #endif
