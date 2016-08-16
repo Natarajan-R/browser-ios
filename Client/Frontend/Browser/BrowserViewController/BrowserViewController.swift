@@ -893,7 +893,8 @@ class BrowserViewController: UIViewController {
     // Mark: Opening New Tabs
 
     @available(iOS 9, *)
-    func switchToPrivacyMode(isPrivate isPrivate: Bool ){
+    func switchToPrivacyMode(){
+        let isPrivate = true // this func should be expaneded to handle exiting, which requires a deferred return val
         if isPrivate {
             PrivateBrowsing.singleton.enter()
         }
@@ -933,7 +934,9 @@ class BrowserViewController: UIViewController {
         let isPrivate = PrivateBrowsing.singleton.isOn
 
         if #available(iOS 9, *) {
-            switchToPrivacyMode(isPrivate: isPrivate)
+            if isPrivate {
+                switchToPrivacyMode()
+            }
             tabManager.addTabAndSelect(request, isPrivate: isPrivate)
         } else {
             tabManager.addTabAndSelect(request)

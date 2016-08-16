@@ -8,6 +8,7 @@ import OnePasswordExtension
 
 let kPrefKeyNoScriptOn = "noscript_on"
 let kPrefKeyFingerprintProtection = "fingerprintprotection_on"
+let kPrefKeyPrivateBrowsingAlwaysOn = "privateBrowsingAlwaysOn"
 
 class BraveSettingsView : AppSettingsTableViewController {
 
@@ -106,8 +107,18 @@ class BraveSettingsView : AppSettingsTableViewController {
         settings += [
             SettingSection(title: NSAttributedString(string: NSLocalizedString("General", comment: "General settings section title")), children: generalSettings),
             SettingSection(title: NSAttributedString(string: NSLocalizedString("Privacy", comment: "Privacy settings section title")), children:
-                [ClearPrivateDataSetting(settings: self), CookieSetting(profile: self.profile)]
-
+                [ClearPrivateDataSetting(settings: self), CookieSetting(profile: self.profile),
+                    BoolSetting(prefs: prefs, prefKey: kPrefKeyPrivateBrowsingAlwaysOn, defaultValue: false, titleText: NSLocalizedString("Private Browsing Only", comment: "Setting to keep app in private mode"), statusText: nil, settingDidChange: { isOn in
+                        if !isOn {
+                            return
+                        }
+                        if #available(iOS 9, *) {
+                            if !PrivateBrowsing.singleton.isOn {
+                                getApp().browserViewController.switchToPrivacyMode()
+                                getApp().tabManager.addTabAndSelect(isPrivate: true)
+                            }
+                        }
+                    })]
             ),
             SettingSection(title: NSAttributedString(string: NSLocalizedString("Brave Shield Defaults", comment: "Section title for adbblock, tracking protection, HTTPS-E, and cookies")), children:
                 [BoolSetting(prefs: prefs, prefKey: AdBlocker.prefKey, defaultValue: true, titleText: NSLocalizedString("Block Ads and Tracking", comment: "")),

@@ -27,6 +27,21 @@ class BraveBrowserViewController : BrowserViewController {
         toolbar?.applyTheme(themeName)
     }
 
+    override func viewDidAppear(animated: Bool) {
+        super.viewDidAppear(animated)
+
+        struct RunOnceGuard { static var ran = false }
+        if !RunOnceGuard.ran && profile.prefs.boolForKey(kPrefKeyPrivateBrowsingAlwaysOn) ?? false {
+            postAsyncToMain(0) {
+                if #available(iOS 9, *) {
+                    getApp().browserViewController.switchToPrivacyMode()
+                    getApp().tabManager.addTabAndSelect(isPrivate: true)
+                }
+            }
+        }
+        RunOnceGuard.ran = true
+    }
+
     override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(animated)
 

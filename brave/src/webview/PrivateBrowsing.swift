@@ -101,8 +101,10 @@ class PrivateBrowsing {
 
     private var exitDeferred = Deferred<()>()
     func exit() -> Deferred<()> {
+        let isAlwaysPrivate = getApp().profile?.prefs.boolForKey(kPrefKeyPrivateBrowsingAlwaysOn) ?? false
+
         exitDeferred = Deferred<()>()
-        if !isOn {
+        if isAlwaysPrivate || !isOn {
             exitDeferred.fill(())
             return exitDeferred
         }

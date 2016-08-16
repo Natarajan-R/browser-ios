@@ -401,6 +401,10 @@ class TabTrayController: UIViewController {
         makeConstraints()
 #if !BRAVE_NO_PRIVATE_MODE
         if #available(iOS 9, *) {
+            if profile.prefs.boolForKey(kPrefKeyPrivateBrowsingAlwaysOn) ?? false {
+                togglePrivateMode.hidden = true
+            }
+
             view.addSubview(togglePrivateMode)
             togglePrivateMode.snp_makeConstraints { make in
                 make.right.equalTo(addTabButton.snp_left).offset(-10)
